@@ -148,10 +148,17 @@ function fuentes() {
     return { caminos: g('caminos'), etapas: g('etapas'), lugares: g('lugares'), origen: 'Google Sheet' };
   }
   return { caminos: 'data/caminos.csv', etapas: 'data/etapas.csv', lugares: 'data/lugares.csv',
-           origen: 'datos de ejemplo locales' };
+           origen: window.__DATOS_EMBEBIDOS__ ? 'datos de ejemplo incluidos en la página' : 'datos de ejemplo locales' };
 }
 
+/* Si la página lleva los datos incrustados (versión de un solo archivo,
+   ver construir-pagina-unica.sh), se usan en lugar de leer la carpeta data/. */
 function traer(url) {
+  var emb = window.__DATOS_EMBEBIDOS__;
+  if (emb && url.indexOf('data/') === 0) {
+    var k = url.indexOf('caminos') !== -1 ? 'caminos' : url.indexOf('etapas') !== -1 ? 'etapas' : 'lugares';
+    if (emb[k]) return Promise.resolve(emb[k]);
+  }
   var sep = url.indexOf('?') === -1 ? '?' : '&';
   return fetch(url + sep + 'cb=' + Date.now(), { cache: 'no-store' })
     .then(function (r) {
