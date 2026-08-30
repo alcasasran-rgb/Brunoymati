@@ -1,0 +1,6 @@
+id,camino_id,orden,origen,destino,km,notas
+frances-e1,frances,1,Sarria,Portomarín,22,
+frances-e2,frances,2,Portomarín,Palas de Rei,25,Centro Freshlegs en Palas de Rei.
+frances-e3,frances,3,Palas de Rei,Arzúa,29,Centro Freshlegs en Arzúa. Etapa más larga del tramo.
+frances-e4,frances,4,Arzúa,O Pedrouzo,19,
+frances-e5,frances,5,O Pedrouzo,Santiago de Compostela,20,

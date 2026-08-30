@@ -1,0 +1,293 @@
+/* Camino DB — hoja de estilos única. Móvil primero. */
+
+:root{
+  --primary:#14524A;
+  --primary-dark:#0E3B35;
+  --primary-soft:#E7F0EE;
+  --accent:#C2661F;
+  --accent-soft:#FBEEE3;
+  --bg:#F6F7F6;
+  --card:#FFFFFF;
+  --text:#1A1D1C;
+  --muted:#6B7472;
+  --line:#E2E6E4;
+  --danger:#B3261E;
+  --danger-soft:#FCEAE8;
+  --warn:#8A5A00;
+  --warn-soft:#FDF3E0;
+  --radius:14px;
+  --shadow:0 1px 2px rgba(16,24,22,.06), 0 1px 8px rgba(16,24,22,.04);
+  --header-h:56px;
+  --tabbar-h:60px;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  background:var(--bg); color:var(--text);
+  font-size:16px; line-height:1.45;
+  -webkit-text-size-adjust:100%;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:inherit;text-decoration:none}
+h1,h2,h3,h4{margin:0;font-weight:600;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;cursor:pointer}
+
+/* ---------- Cabecera ---------- */
+.app-header{
+  position:sticky; top:0; z-index:30;
+  background:var(--primary); color:#fff;
+  padding-top:env(safe-area-inset-top);
+}
+.app-header-inner{
+  height:var(--header-h); display:flex; align-items:center; justify-content:space-between;
+  padding:0 16px; max-width:900px; margin:0 auto;
+}
+.brand{font-weight:700; font-size:17px; letter-spacing:-.02em}
+.icon-btn{
+  background:rgba(255,255,255,.14); color:#fff; border:0; border-radius:10px;
+  width:40px; height:40px; display:flex; align-items:center; justify-content:center;
+}
+.icon-btn svg{width:20px; height:20px}
+.icon-btn:active{background:rgba(255,255,255,.28)}
+.icon-btn.spin{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.banner{
+  background:var(--warn-soft); color:var(--warn);
+  font-size:13px; padding:8px 16px; border-bottom:1px solid rgba(0,0,0,.06);
+}
+.banner.error{background:var(--danger-soft); color:var(--danger)}
+
+/* ---------- Estructura ---------- */
+.app{
+  max-width:900px; margin:0 auto;
+  padding:16px 16px calc(var(--tabbar-h) + 32px + env(safe-area-inset-bottom));
+}
+.page-title{font-size:22px; margin-bottom:2px}
+.page-sub{color:var(--muted); font-size:14px; margin-bottom:18px}
+.section-title{
+  font-size:13px; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--muted); font-weight:600; margin:26px 0 10px;
+}
+.back{
+  display:inline-flex; align-items:center; gap:6px;
+  color:var(--muted); font-size:14px; font-weight:500; margin-bottom:12px;
+  min-height:32px;
+}
+
+/* ---------- Tarjetas de camino / etapa ---------- */
+.camino-card{
+  display:block; background:var(--card); border:1px solid var(--line);
+  border-radius:var(--radius); box-shadow:var(--shadow);
+  padding:18px; margin-bottom:12px;
+}
+.camino-card h2{font-size:19px; margin-bottom:4px}
+.camino-card p{color:var(--muted); font-size:14px}
+.camino-card .count{
+  display:inline-block; margin-top:10px; font-size:12px; font-weight:600;
+  color:var(--primary); background:var(--primary-soft);
+  padding:4px 9px; border-radius:999px;
+}
+.camino-card.off{opacity:.55}
+
+.etapa-row{
+  display:flex; align-items:center; gap:14px;
+  background:var(--card); border:1px solid var(--line);
+  border-radius:var(--radius); box-shadow:var(--shadow);
+  padding:14px 16px; margin-bottom:10px;
+}
+.etapa-num{
+  flex:0 0 34px; height:34px; border-radius:10px;
+  background:var(--primary-soft); color:var(--primary);
+  display:flex; align-items:center; justify-content:center;
+  font-weight:700; font-size:14px;
+}
+.etapa-body{flex:1 1 auto; min-width:0}
+.etapa-body strong{display:block; font-weight:600; font-size:15px}
+.etapa-body span{color:var(--muted); font-size:13px}
+.etapa-chev{color:var(--muted); font-size:18px}
+
+/* ---------- Pestañas de nivel ---------- */
+.tabs{
+  display:flex; gap:6px; background:#ECEFED; padding:4px;
+  border-radius:12px; margin-bottom:16px;
+}
+.tabs button{
+  flex:1; border:0; background:transparent; color:var(--muted);
+  font-weight:600; font-size:14px; padding:10px 4px; border-radius:9px;
+  min-height:42px;
+}
+.tabs button[aria-selected="true"]{background:#fff; color:var(--primary); box-shadow:var(--shadow)}
+
+/* ---------- Chips de categoría ---------- */
+.chips{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px}
+.chip{
+  border:1px solid var(--line); background:var(--card); color:var(--text);
+  border-radius:999px; padding:9px 14px; font-size:14px; font-weight:500;
+  min-height:40px; display:inline-flex; align-items:center; gap:6px;
+}
+.chip[aria-pressed="true"]{background:var(--primary); border-color:var(--primary); color:#fff}
+.chip .n{font-size:12px; opacity:.7}
+
+/* ---------- Tarjeta de lugar ---------- */
+.card{
+  background:var(--card); border:1px solid var(--line);
+  border-radius:var(--radius); box-shadow:var(--shadow);
+  padding:16px; margin-bottom:12px;
+}
+.card.ejemplo{border-style:dashed; background:#FBFBFA}
+.card-head{display:flex; align-items:flex-start; justify-content:space-between; gap:10px}
+.card-head h3{font-size:17px; line-height:1.25}
+.card-meta{color:var(--muted); font-size:13px; margin-top:3px}
+.card-price{font-weight:600; margin-top:8px; font-size:15px}
+.card-notes{
+  margin-top:10px; font-size:14px; color:#39413F;
+  background:#F5F7F6; border-radius:10px; padding:10px 12px;
+}
+.card-internal{margin-top:8px; font-size:12.5px; color:var(--muted)}
+.stars{color:var(--accent); letter-spacing:1px; font-size:13px}
+
+.badge{
+  display:inline-block; font-size:11px; font-weight:700; letter-spacing:.03em;
+  padding:4px 8px; border-radius:6px; white-space:nowrap;
+}
+.badge.partner{background:var(--accent-soft); color:var(--accent)}
+.badge.nivel{background:var(--primary-soft); color:var(--primary)}
+.badge.ej{background:var(--warn-soft); color:var(--warn)}
+
+.actions{display:flex; flex-wrap:wrap; gap:8px; margin-top:14px}
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  min-height:44px; padding:0 14px; border-radius:10px;
+  border:1px solid var(--line); background:#fff; color:var(--text);
+  font-size:14px; font-weight:600; flex:1 1 auto; min-width:calc(50% - 4px);
+}
+.btn.primary{background:var(--primary); border-color:var(--primary); color:#fff}
+.btn.accent{background:var(--accent); border-color:var(--accent); color:#fff}
+.btn:active{transform:translateY(1px)}
+
+.card-foot{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  margin-top:14px; padding-top:12px; border-top:1px solid var(--line);
+}
+.verif{font-size:12.5px; color:var(--muted)}
+.verif.old{color:var(--warn); font-weight:600}
+.verif.none{color:var(--danger)}
+.pick{
+  border:1px solid var(--primary); background:#fff; color:var(--primary);
+  border-radius:10px; min-height:40px; padding:0 12px; font-size:13px; font-weight:600;
+}
+.pick[aria-pressed="true"]{background:var(--primary); color:#fff}
+
+/* ---------- Estados vacíos ---------- */
+.empty{
+  border:1px dashed var(--line); border-radius:var(--radius);
+  padding:22px 16px; text-align:center; color:var(--muted); font-size:14px;
+  background:#FCFCFB;
+}
+
+/* ---------- Buscador ---------- */
+.search-box{position:relative; margin-bottom:16px}
+.search-box input{
+  width:100%; font:inherit; font-size:16px; padding:14px 14px; min-height:48px;
+  border:1px solid var(--line); border-radius:12px; background:#fff;
+}
+.search-box input:focus{outline:2px solid var(--primary); border-color:var(--primary)}
+.crumb{font-size:12.5px; color:var(--muted); margin-bottom:4px}
+
+/* ---------- Cobertura ---------- */
+.table-wrap{overflow-x:auto; -webkit-overflow-scrolling:touch; margin-bottom:8px}
+table.cov{border-collapse:separate; border-spacing:0; width:100%; background:#fff;
+  border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; font-size:14px}
+table.cov th, table.cov td{padding:11px 10px; text-align:left; border-bottom:1px solid var(--line)}
+table.cov thead th{background:#F1F3F2; font-size:12px; text-transform:uppercase;
+  letter-spacing:.05em; color:var(--muted); white-space:nowrap}
+table.cov tbody tr:last-child td{border-bottom:0}
+table.cov td.cell{text-align:center; font-weight:700; width:56px}
+td.cell.ok{color:var(--primary); background:var(--primary-soft)}
+td.cell.ko{color:var(--danger); background:var(--danger-soft)}
+.cov-etapa{min-width:170px}
+.cov-etapa small{display:block; color:var(--muted); font-weight:400}
+.cov-summary{
+  background:#fff; border:1px solid var(--line); border-radius:var(--radius);
+  padding:14px 16px; font-size:14px; margin-bottom:18px;
+}
+.cov-summary strong{color:var(--danger)}
+
+/* ---------- Roadbook ---------- */
+.rb-toolbar{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px}
+.rb-toolbar input{
+  flex:1 1 100%; font:inherit; padding:13px 14px; min-height:48px;
+  border:1px solid var(--line); border-radius:12px;
+}
+.rb-etapa{
+  background:#fff; border:1px solid var(--line); border-radius:var(--radius);
+  padding:16px; margin-bottom:12px; box-shadow:var(--shadow);
+}
+.rb-etapa h3{font-size:16px}
+.rb-etapa .rb-km{color:var(--muted); font-size:13px; margin-bottom:10px}
+.rb-item{border-top:1px solid var(--line); padding-top:10px; margin-top:10px}
+.rb-item:first-of-type{border-top:0; margin-top:0; padding-top:0}
+.rb-item strong{display:block; font-size:15px}
+.rb-item .line{font-size:13.5px; color:#39413F}
+.rb-item .lbl{
+  display:inline-block; font-size:11px; font-weight:700; letter-spacing:.03em;
+  color:var(--primary); background:var(--primary-soft);
+  padding:3px 7px; border-radius:5px; margin-bottom:5px;
+}
+.rb-head{margin-bottom:16px}
+.rb-head h2{font-size:20px}
+.rb-head p{color:var(--muted); font-size:13.5px}
+
+/* ---------- Barra inferior ---------- */
+.tabbar{
+  position:fixed; left:0; right:0; bottom:0; z-index:30;
+  display:flex; background:#fff; border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.tabbar a{
+  flex:1; text-align:center; padding:9px 2px 8px; font-size:11px; font-weight:600;
+  color:var(--muted); min-height:var(--tabbar-h); position:relative;
+}
+.tabbar a .ico{display:block; width:22px; height:22px; margin:0 auto 3px}
+.tabbar a[aria-current="page"]{color:var(--primary)}
+.pill{
+  position:absolute; top:4px; left:50%; margin-left:6px;
+  background:var(--accent); color:#fff; font-size:10px; font-weight:700;
+  border-radius:999px; padding:1px 5px; min-width:16px;
+}
+
+/* ---------- Info de datos ---------- */
+.datainfo{
+  margin-top:26px; font-size:12.5px; color:var(--muted);
+  border-top:1px solid var(--line); padding-top:14px; line-height:1.7;
+}
+
+/* ---------- Escritorio ---------- */
+@media (min-width:720px){
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  .grid2 > *{margin-bottom:0}
+  .btn{flex:0 0 auto; min-width:0}
+}
+
+/* ---------- Impresión: una etapa por página ---------- */
+@media print{
+  @page{size:A4; margin:14mm}
+  .no-print, .app-header, .tabbar{display:none !important}
+  body{background:#fff; font-size:11pt}
+  .app{padding:0; max-width:none}
+  .rb-etapa{
+    border:0; box-shadow:none; padding:0; margin:0;
+    break-inside:avoid; page-break-inside:avoid;
+    break-after:page; page-break-after:always;
+  }
+  .rb-etapa:last-of-type{break-after:auto; page-break-after:auto}
+  .rb-head{break-after:avoid; page-break-after:avoid}
+  .rb-item{break-inside:avoid; page-break-inside:avoid}
+  .rb-etapa h3{font-size:15pt; border-bottom:1.5pt solid #14524A; padding-bottom:5pt; margin-bottom:4pt}
+  .rb-item .lbl{background:none; color:#14524A; padding:0; font-size:9pt}
+  a[href]:after{content:""}
+}
