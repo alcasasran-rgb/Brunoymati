@@ -162,6 +162,7 @@ var state = {
   borrador: null,      /* el gol que se está editando */
   videoArchivo: null,  /* File pendiente de guardar */
   filtro: { portero: '', rival: '', equipo: 'Rival' },
+  porterosExtra: [],
   excelHandle: null,
   vista: 'registro'
 };
@@ -179,6 +180,7 @@ function golesFiltrados() {
 
 function porteros() {
   var lista = (CFG.PORTEROS || []).slice();
+  (state.porterosExtra || []).forEach(function (p) { if (lista.indexOf(p) < 0) lista.push(p); });
   state.goles.forEach(function (g) {
     if (g.portero && lista.indexOf(g.portero) < 0) lista.push(g.portero);
   });
@@ -186,11 +188,31 @@ function porteros() {
 }
 
 function rivales() {
-  var lista = [];
+  var lista = (CFG.RIVALES || []).slice();
   state.goles.forEach(function (g) {
     if (g.rival && lista.indexOf(g.rival) < 0) lista.push(g.rival);
   });
-  return lista.sort();
+  return lista.sort(function (a, b) { return a.localeCompare(b, 'es'); });
+}
+
+/* Jugadores conocidos de un rival: los de config.js más los que ya se han
+   escrito en goles contra ese rival. */
+function jugadoresDe(rival) {
+  var lista = ((CFG.JUGADORES || {})[rival] || []).slice();
+  state.goles.forEach(function (g) {
+    if (g.rival !== rival) return;
+    [g.goleador, g.asistente, g.penultimo].forEach(function (n) {
+      if (n && lista.indexOf(n) < 0) lista.push(n);
+    });
+  });
+  return lista.sort(function (a, b) { return a.localeCompare(b, 'es'); });
+}
+
+/* Con la jornada se deduce la vuelta. */
+function vueltaDeJornada(j) {
+  j = parseInt(j, 10);
+  if (!isFinite(j) || j < 1) return '';
+  return j <= Math.ceil((CFG.JORNADAS || 42) / 2) ? 'Primera Vuelta' : 'Segunda Vuelta';
 }
 
 /* Partidos distintos, para calcular goles por partido. */
@@ -246,6 +268,9 @@ function arrancar() {
     return almacen.ajuste('excelHandle');
   }).then(function (h) {
     state.excelHandle = h || null;
+    return almacen.ajuste('porteros');
+  }).then(function (ps) {
+    state.porterosExtra = Array.isArray(ps) ? ps : [];
     pintar();
   }).catch(function (e) {
     aviso('No se ha podido abrir el almacén del navegador: ' + e, 'error');
@@ -482,8 +507,8 @@ function vistaFormulario(app, id) {
       '<div class="rejilla">' +
         campoTexto('fecha', 'Fecha', g.fecha, { tipo: 'date' }) +
         campoTexto('jornada', 'Jornada', g.jornada, { inputmode: 'numeric', placeholder: 'nº' }) +
-        campoTexto('rival', 'Rival', g.rival, { lista: rivales(), placeholder: 'Nombre del rival' }) +
-        campoSelect('portero', 'Portero', porteros(), g.portero, 'Sin portero') +
+        campoSelect('rival', 'Rival', rivales().concat(['+ Otro rival…']), g.rival, 'Elige el rival') +
+        campoSelect('portero', 'Portero', porteros().concat(['+ Añadir portero…']), g.portero, 'Sin portero') +
         ((CFG.EQUIPOS || []).length > 1 ? campoSelect('equipoPropio', 'Equipo', CFG.EQUIPOS, g.equipoPropio) : '') +
       '</div>' +
       '<div class="rejilla-chips">' +
@@ -511,11 +536,7 @@ function vistaFormulario(app, id) {
       '<span class="et">Tipo</span>' + chips('tipo', T.TIPO, g.tipo) +
       '<div id="zona-subtipo">' + htmlSubtipo(g) + '</div>' +
       '<span class="et">Golpeo</span>' + chips('golpeo', T.GOLPEO, g.golpeo) +
-      '<div class="rejilla">' +
-        campoTexto('goleador', 'Goleador', g.goleador) +
-        campoTexto('asistente', 'Asistente', g.asistente) +
-        campoTexto('penultimo', 'Penúltimo pasador', g.penultimo) +
-      '</div>' +
+      '<div class="rejilla" id="zona-jugadores">' + htmlJugadores(g) + '</div>' +
     '</section>' +
 
     /* ---- Zona de disparo ---- */
@@ -560,6 +581,17 @@ function vistaFormulario(app, id) {
   montarFormulario(app, g, !!id);
 }
 
+/* Goleador, asistente y penúltimo pasador: escribes o eliges de la lista
+   del rival (y si es gol a favor, de la lista del equipo propio). */
+function htmlJugadores(g) {
+  var equipo = g.equipo === 'Mi equipo' ? g.equipoPropio : g.rival;
+  var lista = equipo ? jugadoresDe(equipo) : [];
+  var ph = equipo ? 'Elige o escribe' : 'Elige primero el rival';
+  return campoTexto('goleador', 'Goleador', g.goleador, { lista: lista, placeholder: ph }) +
+         campoTexto('asistente', 'Asistente', g.asistente, { lista: lista, placeholder: ph }) +
+         campoTexto('penultimo', 'Penúltimo pasador', g.penultimo, { lista: lista, placeholder: ph });
+}
+
 function htmlSubtipo(g) {
   var lista = SUBTIPO[g.tipo];
   if (!lista) return '';
@@ -569,10 +601,48 @@ function htmlSubtipo(g) {
 function montarFormulario(app, g, editando) {
   var form = $('#form-gol', app);
 
+  /* Añadir un portero nuevo sin tocar config.js */
+  var selPortero = $('select[name=portero]', form);
+  if (selPortero) selPortero.addEventListener('change', function () {
+    if (selPortero.value !== '+ Añadir portero…') return;
+    var nombre = (prompt('Nombre del portero:') || '').trim();
+    if (nombre && porteros().indexOf(nombre) < 0) {
+      state.porterosExtra.push(nombre);
+      almacen.ponAjuste('porteros', state.porterosExtra.slice());
+    }
+    g.portero = nombre || g.portero || '';
+    var op = document.createElement('option');
+    op.value = op.textContent = g.portero;
+    if (g.portero && !selPortero.querySelector('option[value="' + g.portero.replace(/"/g, '&quot;') + '"]')) selPortero.insertBefore(op, selPortero.lastElementChild);
+    selPortero.value = g.portero;
+  });
+
+  /* Rival fuera de la liga (Copa, amistoso) */
+  var selRival = $('select[name=rival]', form);
+  if (selRival) selRival.addEventListener('change', function () {
+    if (selRival.value === '+ Otro rival…') {
+      var nombre = (prompt('Nombre del rival:') || '').trim();
+      g.rival = nombre || g.rival || '';
+      if (g.rival && !selRival.querySelector('option[value="' + g.rival.replace(/"/g, '&quot;') + '"]')) {
+        var op = document.createElement('option');
+        op.value = op.textContent = g.rival;
+        selRival.insertBefore(op, selRival.lastElementChild);
+      }
+      selRival.value = g.rival;
+    } else g.rival = selRival.value;
+    $('#zona-jugadores', form).innerHTML = htmlJugadores(g);
+  });
+
   /* Inputs nativos → borrador */
   form.addEventListener('input', function (e) {
     var el = e.target;
     if (!el.name) return;
+    if (el.name === 'portero' && el.value === '+ Añadir portero…') return;
+    if (el.name === 'rival' && el.value === '+ Otro rival…') return;
+    if (el.name === 'jornada') {
+      var vu = vueltaDeJornada(el.value);
+      if (vu) { g.vuelta = vu; marcarChip(form, 'vuelta', vu); }
+    }
     g[el.name] = el.value;
     if (el.name === 'minuto') {
       g.periodo = periodoDeMinuto(el.value);
@@ -605,6 +675,7 @@ function montarFormulario(app, g, editando) {
     g[campo] = valor;
     marcarChip(form, campo, g[campo]);
     if (campo === 'tipo') { g.subtipo = ''; $('#zona-subtipo').innerHTML = htmlSubtipo(g); }
+    if (campo === 'equipo') $('#zona-jugadores', form).innerHTML = htmlJugadores(g);
   });
 
   /* Zonas */

@@ -10,7 +10,8 @@ URL cuando se publica: `https://alcasasran-rgb.github.io/brunoymati/porteros/`
 
 ## 1. Puesta en marcha
 
-1. Abre `porteros/config.js` y pon los nombres de los porteros y del equipo.
+1. Abre `porteros/config.js` y revisa porteros, rivales y jugadores. Los
+   porteros también se añaden desde la app («+ Añadir portero…»).
 2. Publica como el resto del repositorio (`./deploy.sh "porteros v1"`).
 3. En el móvil o el ordenador, abre la URL → *Añadir a pantalla de inicio*.
 
@@ -18,9 +19,13 @@ URL cuando se publica: `https://alcasasran-rgb.github.io/brunoymati/porteros/`
 
 1. **Nuevo gol** → elige el clip (se guarda en este dispositivo) o pega el enlace.
 2. Partido: viene prerrellenado con el último gol; con tres goles del mismo
-   partido solo lo escribes una vez.
+   partido solo lo escribes una vez. El rival se elige de la lista de la liga
+   (`RIVALES` en `config.js`; «+ Otro rival…» para Copa o amistosos) y con la
+   jornada se marca sola la vuelta.
 3. Minuto → el **periodo** y la **parte** se rellenan solos.
-4. Tipo → aparecen los subtipos de tu `TABLA MAESTRA`.
+4. Tipo → aparecen los subtipos de tu `TABLA MAESTRA`. Goleador y asistente
+   se eligen de la lista del rival (`JUGADORES` en `config.js`) o se escriben:
+   lo que escribas queda recordado para ese rival.
 5. Toca la **zona de disparo** en el campo → **área** y **banda** se rellenan solas.
 6. Toca la **zona de portería**.
 7. Opcional: valoración del portero (evitable, responsabilidad, errores, trabajo correctivo).
