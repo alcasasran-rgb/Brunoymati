@@ -41,9 +41,10 @@ SHEET_URL: "https://docs.google.com/spreadsheets/d/1AbC...XyZ/edit",
 Guarda (*Commit changes*).
 
 **Paso 4 — Encender la web.**
-En GitHub: pestaña **Settings → Pages → Source: GitHub Actions**. Con eso queda
-publicada. A partir de ahí, cada cambio se publica solo; desde tu ordenador basta
-con un comando:
+En GitHub: pestaña **Settings → Pages → Build and deployment → Source:
+«Deploy from a branch» → Branch: `main` / `(root)` → Save**. GitHub publica
+la web él solo en 1–2 minutos y, a partir de ahí, cada cambio en `main` se
+publica automáticamente; desde tu ordenador basta con un comando:
 
 ```bash
 ./deploy.sh "he añadido hoteles de Arzúa"

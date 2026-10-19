@@ -12,7 +12,8 @@ URL cuando se publica: `https://alcasasran-rgb.github.io/celtafortuna/porteros/`
 
 1. Abre `porteros/config.js` y revisa porteros, rivales y jugadores. Los
    porteros también se añaden desde la app («+ Añadir portero…»).
-2. Publica como el resto del repositorio (`./deploy.sh "porteros v1"`).
+2. Publica como el resto del repositorio (`./deploy.sh "porteros v1"`). La web
+   se sirve desde la rama `main` (Settings → Pages → Deploy from a branch → `main`).
 3. En el móvil o el ordenador, abre la URL → *Añadir a pantalla de inicio*.
 
 ## 2. Flujo de trabajo (un gol en menos de un minuto)
