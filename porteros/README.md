@@ -1,0 +1,96 @@
+# Goles encajados · app para entrenador de porteros
+
+Registra cada gol encajado desde el clip, etiqueta la jugada con **tus 20 zonas
+de campo propio y tus 8 zonas de portería**, y genera el Excel con la estructura
+de tu plantilla (`LISTA GOLES` + resúmenes). Sin backend, sin login, sin coste.
+
+URL cuando se publica: `https://alcasasran-rgb.github.io/brunoymati/porteros/`
+
+---
+
+## 1. Puesta en marcha
+
+1. Abre `porteros/config.js` y pon los nombres de los porteros y del equipo.
+2. Publica como el resto del repositorio (`./deploy.sh "porteros v1"`).
+3. En el móvil o el ordenador, abre la URL → *Añadir a pantalla de inicio*.
+
+## 2. Flujo de trabajo (un gol en menos de un minuto)
+
+1. **Nuevo gol** → elige el clip (se guarda en este dispositivo) o pega el enlace.
+2. Partido: viene prerrellenado con el último gol; con tres goles del mismo
+   partido solo lo escribes una vez.
+3. Minuto → el **periodo** y la **parte** se rellenan solos.
+4. Tipo → aparecen los subtipos de tu `TABLA MAESTRA`.
+5. Toca la **zona de disparo** en el campo → **área** y **banda** se rellenan solas.
+6. Toca la **zona de portería**.
+7. Opcional: valoración del portero (evitable, responsabilidad, errores, trabajo correctivo).
+8. **Guardar**. Si has enlazado un archivo Excel, se actualiza solo.
+
+## 3. El Excel
+
+Se genera entero cada vez desde los goles guardados en la app:
+
+| Hoja | Qué lleva |
+|---|---|
+| `LISTA GOLES` | Las 22 columnas de tu plantilla, en el mismo orden, + 15 columnas de análisis del portero |
+| `RESUMEN` | Totales y tablas por tipo, subtipo, periodo, golpeo, marcador, área, banda, zona de portería, zona de disparo, evitabilidad, responsabilidad, errores, portero y rival |
+| `MAPAS` | Por portero: rejilla de portería 2×4 y rejilla de campo 4×5 con conteos |
+| `PARTIDOS` | Goles encajados, evitables y a balón parado por partido |
+| `TABLA MAESTRA` | Las listas de valores y la definición de las 28 zonas |
+
+**En Chrome o Edge de ordenador** → pestaña Excel → *Enlazar un archivo…* →
+eliges dónde guardarlo una vez y a partir de ahí la app sobrescribe ese archivo
+cada vez que guardas un gol. En móvil o Safari se descarga como archivo nuevo.
+
+> El Excel es la **salida**; la base de datos es la app. Si editas el Excel a
+> mano, la siguiente actualización lo pisa.
+
+## 4. Zonas
+
+Numeración de tus dibujos. Izquierda y derecha son siempre las del dibujo.
+
+**Campo propio** (portería arriba): 1 área pequeña centro · 2 frontal del área ·
+3/4 área pequeña izq./dcha. · 5/6 semi izq./dcha. del área · 7/8 laterales del
+área · 9/10 bandas a la altura del área · 11/12 bandas franja media · 13/14
+interiores franja media · 15/16 bandas franja lejana · 17/18 interiores franja
+lejana · 19 centro franja media · 20 centro franja lejana.
+Dentro del área = 1-8. Impares = izquierda, pares = derecha.
+
+**Portería** (vista frontal desde el campo): 1/2 alta centro izq./dcha. ·
+3/4 baja centro izq./dcha. · 5/6 escuadras · 7/8 junto al palo abajo.
+
+Si hay que mover una línea, se toca solo `assets/zonas.js`.
+
+## 5. Vídeos y copias
+
+- El clip se guarda **en el navegador del dispositivo** donde lo metes. No se
+  sube a ningún sitio. Para compartirlo, usa el campo *enlace* (Drive, YouTube…).
+- `GUARDAR_VIDEO: false` en `config.js` si no quieres que la app almacene vídeo.
+- Pestaña Excel → *Descargar copia (.json)* guarda todos los goles (sin vídeos)
+  para cambiar de dispositivo o restaurar.
+
+## 6. Archivos
+
+```
+porteros/index.html        la app
+porteros/config.js         ← lo único que se toca: porteros, equipos, nombre del Excel
+porteros/assets/app.js     lógica y vistas
+porteros/assets/zonas.js   geometría y nombres de las 20 + 8 zonas
+porteros/assets/xlsx-min.js generador de .xlsx sin librerías externas
+porteros/assets/styles.css diseño
+```
+
+## 7. Decisiones tomadas
+
+- **Mismos valores que tu `TABLA MAESTRA`** (tipos, subtipos, golpeo…) para que
+  tus tablas dinámicas sigan funcionando si copias `LISTA GOLES` a tu archivo.
+- `ZONA DISPARO` pasa de 1-63 a **1-20** y `ZONA PORTERIA` de 1-35 a **1-8**.
+- El subtipo `Juego Directo + ` de tu plantilla tenía el nombre sin terminar; lo
+  he dejado como `Juego Directo +`. Dime qué debe decir.
+- `PERIODO`, `PARTE`, `AREA` y `BANDA` se calculan solos pero se pueden cambiar.
+- Añadida la capa de análisis del portero (15 columnas al final). Es opcional
+  en el formulario: etiquetar rápido sigue siendo posible.
+- Sin librerías externas: el .xlsx se construye en `xlsx-min.js` (ZIP sin
+  comprimir; Excel, Numbers y LibreOffice lo abren igual).
+- Los datos viven en el dispositivo. Sin backend no hay sincronización entre
+  móvil y ordenador: usa la copia .json.

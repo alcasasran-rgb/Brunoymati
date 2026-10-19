@@ -1,5 +1,9 @@
 # Camino DB · Freshlegs
 
+> **Este repositorio aloja también la app de goles encajados para entrenador de
+> porteros**, en la carpeta [`porteros/`](porteros/README.md)
+> (`https://alcasasran-rgb.github.io/brunoymati/porteros/`).
+
 Base de datos interna de proveedores del Camino de Santiago, organizada por
 **camino → etapa → nivel de precio**.
 
