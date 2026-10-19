@@ -275,6 +275,14 @@ function arrancar() {
   $('#brand-sub').textContent = (partes[1] || 'Goles encajados').trim();
   document.title = marca;
 
+  /* Almacenamiento persistente: el navegador no borrará los datos por
+     falta de espacio sin que el usuario lo pida. */
+  if (navigator.storage && navigator.storage.persist) {
+    navigator.storage.persist().then(function (ok) {
+      if (!ok) console.warn('El navegador no ha concedido almacenamiento persistente.');
+    }).catch(function () {});
+  }
+
   almacen.todos().then(function (gs) {
     state.goles = gs || [];
     return almacen.ajuste('excelHandle');
@@ -1668,7 +1676,8 @@ function vistaExportar(app) {
 
     '<section class="bloque">' +
       '<h2>Copia de seguridad</h2>' +
-      '<p>Los datos viven en este navegador. Para cambiar de dispositivo o por si se borra el navegador, guarda una copia (incluye los fotogramas, no los vídeos).</p>' +
+      '<p>Los datos viven <strong>solo en este navegador de este dispositivo</strong>; la web no tiene servidor. Para cambiar de dispositivo, pasar del archivo local a la versión con URL, o por si se borran los datos del navegador, guarda una copia (incluye los fotogramas, no los vídeos).</p>' +
+      '<p class="nota" id="estado-almacen"></p>' +
       '<div class="acciones">' +
         '<button type="button" class="btn" id="btn-json">Descargar copia (.json)</button>' +
         '<label class="btn archivo">Restaurar copia…<input type="file" accept="application/json,.json" id="in-json" hidden></label>' +
@@ -1688,6 +1697,16 @@ function vistaExportar(app) {
   var enlazar = $('#btn-enlazar', app);
   if (enlazar) enlazar.addEventListener('click', elegirArchivoExcel);
   $('#btn-json', app).addEventListener('click', exportarJSON);
+  if (navigator.storage && navigator.storage.estimate) {
+    navigator.storage.estimate().then(function (e) {
+      var el = $('#estado-almacen');
+      if (!el) return;
+      var usado = megas(e.usage || 0), libre = Math.round((e.quota || 0) / 1048576 / 1024 * 10) / 10;
+      return (navigator.storage.persisted ? navigator.storage.persisted() : Promise.resolve(false)).then(function (p) {
+        el.textContent = 'Ocupado en este navegador: ' + usado + ' MB de unos ' + libre + ' GB disponibles · almacenamiento ' + (p ? 'persistente ✓' : 'no persistente: instala la app o guarda copias a menudo');
+      });
+    }).catch(function () {});
+  }
   $('#in-json', app).addEventListener('change', function (e) {
     if (e.target.files && e.target.files[0]) importarJSON(e.target.files[0]);
   });
