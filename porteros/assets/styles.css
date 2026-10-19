@@ -208,3 +208,42 @@ details summary{cursor:pointer;font-weight:600;color:var(--primary);font-size:14
   .dos-col{grid-template-columns:1fr 1fr}
   .acciones .btn{flex:0 1 auto}
 }
+
+/* ---------- Informe ---------- */
+.subtabs{display:flex;gap:4px;margin:0 0 14px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:4px;overflow-x:auto}
+.subtabs a{flex:1 0 auto;text-align:center;padding:8px 12px;border-radius:9px;font-family:var(--titular);font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:15px;color:var(--muted);white-space:nowrap}
+.subtabs a.sel{background:var(--primary);color:#fff;box-shadow:inset 0 -3px 0 var(--celeste)}
+.tarjeta-graf{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px}
+.tarjeta-graf h3{font-family:var(--titular);font-size:17px;color:var(--primary);text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px}
+.tarjeta-graf.ancha{grid-column:1 / -1}
+svg.grafico{width:100%;height:auto;display:block;font-family:Inter,sans-serif}
+svg.grafico .rej{stroke:var(--line);stroke-width:1}
+svg.grafico .base{stroke:var(--muted);stroke-width:1.5}
+svg.grafico .eje{font-size:14px;fill:var(--muted)}
+svg.grafico .cat{font-size:15px;fill:var(--text)}
+svg.grafico .val{font-size:15px;font-weight:600;fill:var(--text)}
+.leyenda{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:12px;color:var(--muted)}
+.leyenda i,.ley-fila i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.donut{display:flex;align-items:center;gap:14px}
+.donut svg{width:140px;height:140px;flex:0 0 auto}
+.donut-total{font-family:var(--titular);font-size:34px;font-weight:800;fill:var(--primary)}
+.ley-lista{flex:1;min-width:0}
+.ley-fila{display:flex;align-items:center;gap:6px;font-size:13px;padding:4px 0;border-bottom:1px solid var(--line)}
+.ley-k{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ley-n{font-weight:600}
+.ley-n small{color:var(--muted);font-weight:400}
+.buscador input{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:inherit;min-height:44px;margin-bottom:10px;background:#fff}
+.tabla-env{overflow-x:auto;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);-webkit-overflow-scrolling:touch}
+.tabla{width:100%;border-collapse:collapse;font-size:13px;min-width:720px}
+.tabla th,.tabla td{padding:9px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+.tabla th{font-family:var(--titular);font-size:14px;letter-spacing:.04em;text-transform:uppercase;color:var(--primary);background:var(--primary-soft);position:sticky;top:0;cursor:pointer;user-select:none}
+.tabla th.asc::after{content:' ▲';font-size:10px}
+.tabla th.desc::after{content:' ▼';font-size:10px}
+.tabla tbody tr[data-id]{cursor:pointer}
+.tabla tbody tr[data-id]:hover{background:var(--bg)}
+.tabla td.num,.tabla th.num{text-align:right}
+.tabla tfoot td{font-weight:600;background:var(--bg)}
+.tabla.compacta{min-width:0;font-size:12px;margin-top:8px}
+.tabla.compacta th,.tabla.compacta td{padding:5px 8px;white-space:normal}
+.tabla tr.apagada td{color:var(--muted)}
+.mapa details{margin-top:8px}
