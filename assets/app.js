@@ -163,7 +163,7 @@ var state = {
   videoArchivo: null,  /* File pendiente de guardar */
   filtro: { portero: '', rival: '', equipo: '' },
   porterosExtra: [],
-  informe: { tab: 'resumen', orden: 'fecha', desc: true, buscar: '' },
+  informe: { tab: 'resumen', orden: 'fecha', desc: true, buscar: '', zc: '', zp: '' },
   excelHandle: null,
   vista: 'registro'
 };
@@ -349,9 +349,9 @@ function svgCampo(sel, opts) {
   Object.keys(cuenta).forEach(function (k) { if (cuenta[k] > max) max = cuenta[k]; });
 
   var zonas = Z.CAMPO.map(function (z) {
-    var c = Z.centro(z.poligono), n = cuenta[z.n] || 0;
-    var calor = max ? ' style="fill-opacity:' + (0.12 + 0.75 * n / max) + '"' : '';
-    return '<polygon class="zona' + (String(sel) === String(z.n) ? ' sel' : '') + (n ? ' calor' : '') + '" ' +
+    var c = Z.centro(z.poligono), n = cuenta[z.n] || 0, esSel = String(sel) === String(z.n);
+    var calor = (max && !esSel) ? ' style="fill-opacity:' + (0.12 + 0.75 * n / max) + '"' : '';
+    return '<polygon class="zona' + (esSel ? ' sel' : '') + (n ? ' calor' : '') + '" ' +
            'data-zona="' + z.n + '" points="' + Z.puntos(z.poligono) + '"' + calor + '>' +
            '<title>' + z.n + ' · ' + esc(z.nombre) + (opts.cuenta ? ' · ' + n : '') + '</title></polygon>' +
            '<text class="num" x="' + c[0] + '" y="' + (c[1] + (opts.cuenta ? -6 : 8)) + '">' + z.n + '</text>' +
@@ -379,9 +379,9 @@ function svgPorteria(sel, opts) {
   Object.keys(cuenta).forEach(function (k) { if (cuenta[k] > max) max = cuenta[k]; });
 
   var zonas = Z.PORTERIA.map(function (z) {
-    var c = Z.centro(z.poligono), n = cuenta[z.n] || 0;
-    var calor = max ? ' style="fill-opacity:' + (0.12 + 0.75 * n / max) + '"' : '';
-    return '<polygon class="zona' + (String(sel) === String(z.n) ? ' sel' : '') + (n ? ' calor' : '') + '" ' +
+    var c = Z.centro(z.poligono), n = cuenta[z.n] || 0, esSel = String(sel) === String(z.n);
+    var calor = (max && !esSel) ? ' style="fill-opacity:' + (0.12 + 0.75 * n / max) + '"' : '';
+    return '<polygon class="zona' + (esSel ? ' sel' : '') + (n ? ' calor' : '') + '" ' +
            'data-zona="' + z.n + '" points="' + Z.puntos(z.poligono) + '"' + calor + '>' +
            '<title>' + z.n + ' · ' + esc(z.nombre) + (opts.cuenta ? ' · ' + n : '') + '</title></polygon>' +
            '<text class="num" x="' + c[0] + '" y="' + (c[1] + (opts.cuenta ? -8 : 10)) + '">' + z.n + '</text>' +
@@ -403,6 +403,7 @@ function etiquetaZona(tipo, n) {
 /* ============================== Vista: registro ============================== */
 
 function vistaRegistro(app) {
+  app.onclick = null;
   var gs = golesFiltrados();
   var ps = porteros(), rs = rivalesConGoles();
 
@@ -505,6 +506,7 @@ function borradorNuevo() {
 }
 
 function vistaFormulario(app, id) {
+  app.onclick = null;
   var g;
   if (id) {
     g = state.goles.filter(function (x) { return x.id === id; })[0];
@@ -1124,7 +1126,15 @@ function vistaInforme(app, sub) {
       $('#tabla-goles', app).innerHTML = tablaGoles(gs);
     });
   }
-  app.addEventListener('click', function (e) {
+  /* Un solo manejador por render: #app persiste entre vistas y los
+     addEventListener se irían acumulando. */
+  app.onclick = function (e) {
+    var zonaCampo = e.target.closest('#mapa-campo [data-zona]');
+    if (zonaCampo) { var n1 = zonaCampo.getAttribute('data-zona'); state.informe.zc = state.informe.zc === n1 ? '' : n1; pintar(); return; }
+    var zonaPort = e.target.closest('#mapa-porteria [data-zona]');
+    if (zonaPort) { var n2 = zonaPort.getAttribute('data-zona'); state.informe.zp = state.informe.zp === n2 ? '' : n2; pintar(); return; }
+    var quitar = e.target.closest('[data-quitar-zona]');
+    if (quitar) { var q = quitar.getAttribute('data-quitar-zona'); if (q === 'zc' || q === 'todo') state.informe.zc = ''; if (q === 'zp' || q === 'todo') state.informe.zp = ''; pintar(); return; }
     var th = e.target.closest('th[data-orden]');
     if (th) {
       var o = th.getAttribute('data-orden');
@@ -1134,7 +1144,7 @@ function vistaInforme(app, sub) {
     }
     var tr = e.target.closest('tr[data-id]');
     if (tr) navegar('#/editar/' + tr.getAttribute('data-id'));
-  });
+  };
 }
 
 function informeResumen(gs) {
@@ -1240,17 +1250,66 @@ function informePartidos(gs) {
 }
 
 function informeMapas(gs) {
-  var cc = contar(gs, function (g) { return g.zonaDisparo; }), cp = contar(gs, function (g) { return g.zonaPorteria; });
-  var total = gs.length;
-  function tablaZonas(zonas, c) {
+  var zc = state.informe.zc, zp = state.informe.zp, total = gs.length;
+  /* Filtro cruzado: cada mapa cuenta solo los goles que pasan el filtro del otro. */
+  var paraCampo = zp ? gs.filter(function (g) { return String(g.zonaPorteria) === String(zp); }) : gs;
+  var paraPorteria = zc ? gs.filter(function (g) { return String(g.zonaDisparo) === String(zc); }) : gs;
+  var ambos = gs.filter(function (g) {
+    return (!zc || String(g.zonaDisparo) === String(zc)) && (!zp || String(g.zonaPorteria) === String(zp));
+  });
+  var cc = contar(paraCampo, function (g) { return g.zonaDisparo; }), cp = contar(paraPorteria, function (g) { return g.zonaPorteria; });
+
+  function tablaZonas(zonas, c, base) {
     return '<table class="tabla compacta"><thead><tr><th>Nº</th><th>Zona</th><th class="num">Goles</th><th class="num">%</th></tr></thead><tbody>' +
-      zonas.map(function (z) { var n = c[z.n] || 0; return '<tr class="' + (n ? '' : 'apagada') + '"><td><strong>' + z.n + '</strong></td><td>' + esc(z.nombre) + '</td><td class="num">' + n + '</td><td class="num">' + pct(n, total) + '%</td></tr>'; }).join('') +
+      zonas.map(function (z) { var n = c[z.n] || 0; return '<tr class="' + (n ? '' : 'apagada') + '"><td><strong>' + z.n + '</strong></td><td>' + esc(z.nombre) + '</td><td class="num">' + n + '</td><td class="num">' + pct(n, base) + '%</td></tr>'; }).join('') +
       '</tbody></table>';
   }
-  return '<div class="mapas">' +
-    '<div class="mapa"><h3>Zona de disparo</h3>' + svgCampo(null, { cuenta: cc }) + '<details><summary>Ver tabla</summary>' + tablaZonas(Z.CAMPO, cc) + '</details></div>' +
-    '<div class="mapa"><h3>Zona de portería</h3>' + svgPorteria(null, { cuenta: cp }) + '<details><summary>Ver tabla</summary>' + tablaZonas(Z.PORTERIA, cp) + '</details></div>' +
-    '</div>';
+
+  var zcInfo = zc ? Z.campo(zc) : null, zpInfo = zp ? Z.porteria(zp) : null;
+  function goles(n) { return '<strong>' + n + '</strong> gol' + (n === 1 ? '' : 'es'); }
+  var filtroHtml = (zc || zp)
+    ? '<div class="filtro-zonas">' +
+        (zcInfo ? '<button type="button" class="chip sel" data-quitar-zona="zc">Disparo ' + zcInfo.n + ' · ' + esc(zcInfo.corto) + ' ✕</button>' : '') +
+        (zpInfo ? '<button type="button" class="chip sel" data-quitar-zona="zp">Portería ' + zpInfo.n + ' · ' + esc(zpInfo.corto) + ' ✕</button>' : '') +
+        '<button type="button" class="chip" data-quitar-zona="todo">Quitar filtros</button>' +
+      '</div>'
+    : '<p class="nota">Toca una zona de cualquiera de los dos mapas para ver los goles implicados; con una zona de cada mapa se cruzan.</p>';
+
+  var resumenHtml = '';
+  if (zc && !zp) {
+    var top = ordenado(cp)[0];
+    resumenHtml = '<p class="cruce">' + goles(paraPorteria.length) + ' desde la zona ' + zc + (top ? ' · el más repetido entra por la <strong>' + top.k + '</strong> (' + pct(top.n, paraPorteria.length) + '%)' : '') + '.</p>';
+  } else if (zp && !zc) {
+    var topc = ordenado(cc)[0];
+    resumenHtml = '<p class="cruce">' + goles(paraCampo.length) + ' por la zona ' + zp + ' de la portería' + (topc ? ' · vienen sobre todo de la zona <strong>' + topc.k + '</strong> (' + pct(topc.n, paraCampo.length) + '%)' : '') + '.</p>';
+  } else if (zc && zp) {
+    resumenHtml = '<p class="cruce">' + goles(ambos.length) + ' desde la zona ' + zc + ' que entra' + (ambos.length === 1 ? '' : 'n') + ' por la ' + zp + ' (' + pct(ambos.length, total) + '% del total).</p>';
+  }
+
+  var lista = '';
+  if (zc || zp) {
+    if (!ambos.length) lista = '<p class="vacio">Ningún gol con esa combinación.</p>';
+    else {
+      var grupos = [], idx = {};
+      ambos.forEach(function (g) {
+        var k = (g.fecha || '') + '|' + (g.rival || '');
+        if (idx[k] == null) { idx[k] = grupos.length; grupos.push({ fecha: g.fecha, rival: g.rival, campo: g.campo, resultado: g.resultado, jornada: g.jornada, goles: [] }); }
+        grupos[idx[k]].goles.push(g);
+      });
+      lista = grupos.map(function (p) {
+        var cab = [fechaCorta(p.fecha), p.jornada ? 'J' + p.jornada : '', p.rival ? 'vs ' + p.rival : '', p.campo, p.resultado].filter(Boolean).map(esc).join(' · ');
+        return '<section class="partido"><h3>' + (cab || 'Sin partido') + ' <span class="cuenta">' + p.goles.length + '</span></h3>' +
+          p.goles.sort(function (a, b) { return (a.minuto || 0) - (b.minuto || 0); }).map(tarjetaGol).join('') + '</section>';
+      }).join('');
+    }
+  }
+
+  return filtroHtml + resumenHtml +
+    '<div class="mapas">' +
+      '<div class="mapa"><h3>Zona de disparo' + (zp ? ' <small>· solo goles por la portería ' + zp + '</small>' : '') + '</h3><div id="mapa-campo">' + svgCampo(zc, { cuenta: cc }) + '</div><details><summary>Ver tabla</summary>' + tablaZonas(Z.CAMPO, cc, paraCampo.length) + '</details></div>' +
+      '<div class="mapa"><h3>Zona de portería' + (zc ? ' <small>· solo goles desde la zona ' + zc + '</small>' : '') + '</h3><div id="mapa-porteria">' + svgPorteria(zp, { cuenta: cp }) + '</div><details><summary>Ver tabla</summary>' + tablaZonas(Z.PORTERIA, cp, paraPorteria.length) + '</details></div>' +
+    '</div>' +
+    (lista ? '<h2 class="sub-tit">Goles implicados</h2>' + lista : '');
 }
 
 function informeEvolucion(gs) {
@@ -1650,6 +1709,7 @@ function importarJSON(archivo) {
 /* ============================== Vista: exportar ============================== */
 
 function vistaExportar(app) {
+  app.onclick = null;
   var n = state.goles.length;
   var conHandle = !!state.excelHandle;
   app.innerHTML = '<div class="vista">' +

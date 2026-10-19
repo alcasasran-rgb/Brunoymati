@@ -247,3 +247,11 @@ svg.grafico .val{font-size:15px;font-weight:600;fill:var(--text)}
 .tabla.compacta th,.tabla.compacta td{padding:5px 8px;white-space:normal}
 .tabla tr.apagada td{color:var(--muted)}
 .mapa details{margin-top:8px}
+
+/* ---------- Mapas con filtro ---------- */
+.filtro-zonas{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.cruce{background:var(--primary-soft);border-left:4px solid var(--celeste);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:14px}
+.mapa h3 small{font-family:Inter,sans-serif;text-transform:none;letter-spacing:0;font-weight:500;color:var(--muted);font-size:12px}
+.sub-tit{font-family:var(--titular);font-size:20px;text-transform:uppercase;letter-spacing:.04em;color:var(--primary);margin:6px 0 10px}
+svg .zona.sel{stroke:#fff;stroke-width:5;fill:var(--accent);fill-opacity:.9}
+svg.campo .zona:not(.sel):hover,svg.porteria .zona:not(.sel):hover{stroke-width:3}
