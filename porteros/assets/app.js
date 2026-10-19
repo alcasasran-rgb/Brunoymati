@@ -471,7 +471,7 @@ function vistaFormulario(app, id) {
     '<section class="bloque"><h2>1 · Clip del gol</h2>' +
       '<div id="zona-video"></div>' +
       '<div class="fila">' +
-        '<label class="btn archivo">Elegir vídeo<input type="file" accept="video/*" id="in-video" hidden></label>' +
+        '<label class="btn archivo">Elegir vídeo<input type="file" accept="video/*,.mp4,.m4v,.mov,.webm,.mkv,.avi,.MP4,.MOV" id="in-video" hidden></label>' +
         campoTexto('link', 'o enlace (YouTube, Drive, Veo…)', g.link, { tipo: 'url', placeholder: 'https://…' }) +
       '</div>' +
       (CFG.GUARDAR_VIDEO === false ? '<p class="nota">La app no guarda el vídeo, solo su nombre. Cambia GUARDAR_VIDEO en config.js si quieres verlo desde aquí.</p>' : '') +
@@ -665,7 +665,9 @@ function montarVideo(form, g) {
   var input = $('#in-video', form);
 
   function pintarVideo(src, nombre, tam) {
-    if (_urlVideo) { URL.revokeObjectURL(_urlVideo); _urlVideo = null; }
+    /* Se libera la URL del vídeo anterior, nunca la que se va a mostrar. */
+    if (_urlVideo && _urlVideo !== src) URL.revokeObjectURL(_urlVideo);
+    _urlVideo = src || null;
     if (!src) {
       zona.innerHTML = g.videoNombre
         ? '<p class="nota">Clip: <strong>' + esc(g.videoNombre) + '</strong>' + (g.videoTam ? ' (' + megas(g.videoTam) + ' MB)' : '') + '</p>'
@@ -688,9 +690,32 @@ function montarVideo(form, g) {
       (tam && megas(tam) > (CFG.AVISO_VIDEO_MB || 80) ? ' · <strong>Pesa bastante</strong>: recórtalo al gol para no llenar el móvil.' : '') + '</p>';
 
     var v = $('#vid', zona);
+    v.addEventListener('error', function () {
+      var c = v.error && v.error.code;
+      var msg = c === 4
+        ? 'Chrome/Edge no puede reproducir este vídeo. Casi siempre es un MP4 en H.265/HEVC (iPhone, algunas cámaras y plataformas de análisis). Conviértelo a H.264 (por ejemplo con HandBrake, perfil «Fast 1080p30») o pega un enlace.'
+        : 'No se ha podido cargar el vídeo (código ' + c + ').';
+      var p = document.createElement('p');
+      p.className = 'nota error-video';
+      p.textContent = msg;
+      zona.appendChild(p);
+    });
+    v.addEventListener('loadedmetadata', function () {
+      if (g.instante != null && v.videoWidth) v.currentTime = g.instante;
+      if (!v.videoWidth) {
+        var p = document.createElement('p');
+        p.className = 'nota error-video';
+        p.textContent = 'El archivo se ha abierto pero el navegador no muestra imagen: el códec de vídeo no es compatible (probablemente H.265/HEVC). Conviértelo a H.264 o pega un enlace.';
+        zona.appendChild(p);
+      }
+    });
+    if (zona._conControles) return;
+    zona._conControles = true;
     zona.addEventListener('click', function (e) {
       var b = e.target.closest('button');
       if (!b) return;
+      var v = $('#vid', zona);
+      if (!v) return;
       if (b.hasAttribute('data-vel')) {
         v.playbackRate = parseFloat(b.getAttribute('data-vel'));
         $$('[data-vel]', zona).forEach(function (x) { x.classList.toggle('sel', x === b); });
@@ -702,21 +727,26 @@ function montarVideo(form, g) {
         b.textContent = 'Marcar instante del gol (' + g.instante.toFixed(1) + 's)';
       }
     });
-    if (g.instante != null) v.addEventListener('loadedmetadata', function () { v.currentTime = g.instante; });
   }
 
   input.addEventListener('change', function () {
     var f = input.files && input.files[0];
     if (!f) return;
-    state.videoArchivo = f;
     g.videoNombre = f.name; g.videoTam = f.size;
-    _urlVideo = URL.createObjectURL(f);
-    pintarVideo(_urlVideo, f.name, f.size);
+    var limite = (CFG.MAX_VIDEO_MB || 600);
+    if (megas(f.size) > limite) {
+      state.videoArchivo = null;
+      aviso('El vídeo pesa ' + megas(f.size) + ' MB: se reproduce ahora pero no se guardará en la app. Recorta el clip al gol (menos de ' + limite + ' MB) si quieres conservarlo.', 'error');
+    } else {
+      state.videoArchivo = f;
+    }
+    pintarVideo(URL.createObjectURL(f), f.name, f.size);
+    input.value = '';
   });
 
   if (g.videoId) {
     almacen.video(g.videoId).then(function (r) {
-      if (r && r.blob) { _urlVideo = URL.createObjectURL(r.blob); pintarVideo(_urlVideo, r.nombre, r.blob.size); }
+      if (r && r.blob) pintarVideo(URL.createObjectURL(r.blob), r.nombre, r.blob.size);
       else pintarVideo(null);
     });
   } else pintarVideo(null);
