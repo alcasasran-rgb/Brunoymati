@@ -42,8 +42,16 @@ Se genera entero cada vez desde los goles guardados en la app:
 eliges dónde guardarlo una vez y a partir de ahí la app sobrescribe ese archivo
 cada vez que guardas un gol. En móvil o Safari se descarga como archivo nuevo.
 
+**Para verlo desde el móvil y otros sitios**: enlaza el archivo dentro de una
+carpeta de **OneDrive, Google Drive para escritorio o Dropbox**. La app lo
+sobrescribe en el ordenador, la sincronización lo sube y lo abres desde
+cualquier dispositivo con Excel o la app de Drive. Los vídeos no viajan: se
+quedan en el ordenador donde se añadieron.
+
 > El Excel es la **salida**; la base de datos es la app. Si editas el Excel a
 > mano, la siguiente actualización lo pisa.
+> Ten el archivo **cerrado en Excel** al guardar goles: si está abierto,
+> Windows lo bloquea y la app no puede escribirlo (avisa y descarga una copia).
 
 ## 4. Zonas
 
