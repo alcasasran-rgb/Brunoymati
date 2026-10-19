@@ -2,7 +2,7 @@
 
 > **Este repositorio aloja también la app de goles encajados para entrenador de
 > porteros**, en la carpeta [`porteros/`](porteros/README.md)
-> (`https://alcasasran-rgb.github.io/brunoymati/porteros/`).
+> (`https://alcasasran-rgb.github.io/celtafortuna/porteros/`).
 
 Base de datos interna de proveedores del Camino de Santiago, organizada por
 **camino → etapa → nivel de precio**.
@@ -51,7 +51,7 @@ con un comando:
 
 **Paso 5 — Ponerla en el móvil.**
 Abre la URL que te da GitHub Pages
-(`https://alcasasran-rgb.github.io/brunoymati/`) en el móvil del mostrador →
+(`https://alcasasran-rgb.github.io/celtafortuna/`) en el móvil del mostrador →
 menú del navegador → **Añadir a pantalla de inicio**. Queda como una app.
 
 > **Los cambios en la Sheet tardan hasta 5 minutos en verse**: Google cachea el

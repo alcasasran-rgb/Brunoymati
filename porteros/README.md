@@ -4,7 +4,7 @@ Registra cada gol encajado desde el clip, etiqueta la jugada con **tus 20 zonas
 de campo propio y tus 8 zonas de portería**, y genera el Excel con la estructura
 de tu plantilla (`LISTA GOLES` + resúmenes). Sin backend, sin login, sin coste.
 
-URL cuando se publica: `https://alcasasran-rgb.github.io/brunoymati/porteros/`
+URL cuando se publica: `https://alcasasran-rgb.github.io/celtafortuna/porteros/`
 
 ---
 
