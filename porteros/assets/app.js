@@ -35,13 +35,9 @@ var SUBTIPO = {
                          'Contraataque + Tiro Lejano', 'Contraataque + 1x1'],
   'Robo en Inicio Rival': ['Robo por dentro', 'Robo por fuera'],
   'Acción a balón parado': [
-    'CORNER 1º PALO PIE NATURAL', 'CORNER 1º PALO PIE CAMBIADO',
-    'CORNER 2º PALO PIE NATURAL', 'CORNER 2º PALO PIE CAMBIADO',
-    'CORNER CENTRO AREA PIE NATURAL', 'CORNER CENTRO AREA PIE CAMBIADO',
-    'CORNER RECHACE', 'SAQUE DE BANDA LARGO', 'SAQUE DE BANDA CORTO',
-    'FALTA LATERAL PIE NATURAL', 'FALTA LATERAL PIE CAMBIADO',
-    'FALTA ESCORADA PIE NATURAL', 'FALTA ESCORADA PIE CAMBIADO',
-    'FALTA FRONTAL', 'FALTA DIRECTA', 'FALTA + RECHACE', 'PENALTY']
+    'CORNER 1º PALO', 'CORNER 2º PALO', 'CORNER CENTRO AREA', 'CORNER RECHACE',
+    'SAQUE DE BANDA', 'FALTA LATERAL', 'FALTA ESCORADA', 'FALTA FRONTAL',
+    'FALTA DIRECTA', 'FALTA + RECHACE', 'PENALTY']
 };
 
 /* Capa de análisis del portero. No estaba en la plantilla: es lo que
@@ -53,6 +49,10 @@ var G = {
                     'Salida al pie / 1x1', 'Achique', 'Sin opción de intervenir'],
   POSICION:        ['Correcta', 'Adelantado', 'Atrasado', 'Perfil incorrecto',
                     'Fuera de la portería'],
+  PIE:             ['Pie natural', 'Pie cambiado'],
+  ACIERTO:         ['Colocación correcta', 'Buena lectura', 'Salida a tiempo', 'Reducción del ángulo',
+                    'Apoyos correctos', 'Intento de parada correcto', 'Comunicación con la defensa',
+                    'Nada que destacar'],
   ERROR:           ['Sin error del portero', 'Colocación', 'Lectura / anticipación',
                     'Timing de salida', 'Técnica de manos', 'Blocaje',
                     'Despeje a zona peligrosa', 'Juego de pies',
@@ -478,7 +478,7 @@ function borradorNuevo() {
     parte: '', minuto: '', periodo: '', status: '',
     tipo: '', subtipo: '', golpeo: '', goleador: '', asistente: '', penultimo: '',
     zonaDisparo: '', area: '', banda: '', zonaPorteria: '',
-    evitabilidad: '', responsabilidad: '', accion: '', posicion: '', errores: [], observaciones: '', correctivo: '',
+    evitabilidad: '', responsabilidad: '', accion: '', posicion: '', errores: [], aciertos: [], pie: '', observaciones: '', correctivo: '',
     videoId: '', videoNombre: '', videoTam: 0, link: '',
     instanteRemate: null, instanteGol: null, fotoRemate: '', fotoGol: '',
     _mismoDia: esMismoDia
@@ -492,6 +492,7 @@ function vistaFormulario(app, id) {
     if (!g) { navegar('#/'); return; }
     g = JSON.parse(JSON.stringify(g));
     if (!g.errores) g.errores = [];
+    if (!g.aciertos) g.aciertos = [];
   } else {
     g = borradorNuevo();
   }
@@ -575,6 +576,7 @@ function vistaFormulario(app, id) {
         '<div><span class="et">Acción del portero</span>' + chips('accion', G.ACCION, g.accion) + '</div>' +
         '<div><span class="et">Posición de partida</span>' + chips('posicion', G.POSICION, g.posicion) + '</div>' +
         '<div><span class="et">Errores detectados <small>(varios)</small></span>' + chips('errores', G.ERROR, g.errores, true) + '</div>' +
+        '<div><span class="et">Aciertos del portero <small>(varios)</small></span>' + chips('aciertos', G.ACIERTO, g.aciertos, true) + '</div>' +
       '</div>' +
       '<label class="campo"><span>Observaciones</span><textarea name="observaciones" rows="2">' + esc(g.observaciones) + '</textarea></label>' +
       '<label class="campo"><span>Trabajo correctivo propuesto</span><textarea name="correctivo" rows="2" placeholder="Ejercicio o tarea para entrenar esto">' + esc(g.correctivo) + '</textarea></label>' +
@@ -605,7 +607,10 @@ function htmlJugadores(g) {
 function htmlSubtipo(g) {
   var lista = SUBTIPO[g.tipo];
   if (!lista) return '';
-  return '<span class="et">Subtipo</span>' + chips('subtipo', lista, g.subtipo);
+  return '<span class="et">Subtipo</span>' + chips('subtipo', lista, g.subtipo) +
+    (g.tipo === 'Acción a balón parado'
+      ? '<span class="et">Pie del lanzador <small>(opcional)</small></span>' + chips('pie', G.PIE, g.pie)
+      : '');
 }
 
 function montarFormulario(app, g, editando) {
@@ -673,8 +678,9 @@ function montarFormulario(app, g, editando) {
     var campo = b.getAttribute('data-chip'), valor = b.getAttribute('data-valor');
     if (b.getAttribute('data-multi')) {
       var i = g[campo].indexOf(valor);
-      if (valor === 'Sin error del portero') g[campo] = i >= 0 ? [] : [valor];
-      else { if (i >= 0) g[campo].splice(i, 1); else g[campo].push(valor); g[campo] = g[campo].filter(function (v) { return v !== 'Sin error del portero'; }); }
+      var excluyente = campo === 'errores' ? 'Sin error del portero' : 'Nada que destacar';
+      if (valor === excluyente) g[campo] = i >= 0 ? [] : [valor];
+      else { if (i >= 0) g[campo].splice(i, 1); else g[campo].push(valor); g[campo] = g[campo].filter(function (v) { return v !== excluyente; }); }
       $$('[data-chip="' + campo + '"]', form).forEach(function (c) {
         c.classList.toggle('sel', g[campo].indexOf(c.getAttribute('data-valor')) >= 0);
       });
@@ -684,7 +690,7 @@ function montarFormulario(app, g, editando) {
        del partido prerrellenados, un toque de más borraba el valor. */
     g[campo] = valor;
     marcarChip(form, campo, g[campo]);
-    if (campo === 'tipo') { g.subtipo = ''; $('#zona-subtipo').innerHTML = htmlSubtipo(g); }
+    if (campo === 'tipo') { g.subtipo = ''; g.pie = ''; $('#zona-subtipo').innerHTML = htmlSubtipo(g); }
     if (campo === 'equipo') $('#zona-jugadores', form).innerHTML = htmlJugadores(g);
   });
 
@@ -916,7 +922,9 @@ function guardarGol(g, accion) {
     var i = state.goles.findIndex(function (x) { return x.id === g.id; });
     if (i >= 0) state.goles[i] = g; else state.goles.push(g);
     state.videoArchivo = null;
-    aviso('Gol guardado.' + (state.excelHandle ? ' Actualizando Excel…' : ''), 'ok');
+    if (state.goles.length % 10 === 0) {
+      aviso('Gol guardado. Llevas ' + state.goles.length + ' goles: descarga una copia de seguridad en la pestaña Excel.', '');
+    } else aviso('Gol guardado.' + (state.excelHandle ? ' Actualizando Excel…' : ''), 'ok');
     if (state.excelHandle) exportarExcel(true);
     if (accion === 'otro') { if (ruta().vista === 'nuevo') pintar(); else navegar('#/nuevo'); }
     else navegar('#/');
@@ -1002,6 +1010,7 @@ function vistaPanel(app) {
       barras('Marcador en el momento', contar(gs, function (g) { return g.status; }), T.STATUS) +
       barras('Responsabilidad', contar(gs.filter(function (g) { return g.responsabilidad; }), function (g) { return g.responsabilidad; }), G.RESPONSABILIDAD) +
       barras('Errores del portero', contar(gs.filter(function (g) { return g.errores && g.errores.length; }), function (g) { return g.errores; }), G.ERROR) +
+      barras('Aciertos del portero', contar(gs.filter(function (g) { return g.aciertos && g.aciertos.length; }), function (g) { return g.aciertos; }), G.ACIERTO) +
       barras('Acción del portero', contar(gs.filter(function (g) { return g.accion; }), function (g) { return g.accion; }), G.ACCION) +
       (ps.length > 1 && !state.filtro.portero ? barras('Por portero', contar(gs, function (g) { return g.portero; })) : '') +
       barras('Por rival', contar(gs, function (g) { return g.rival; })) +
@@ -1021,8 +1030,8 @@ var CABECERAS_PLANTILLA = ['ID_GOL', 'EQUIPO', 'GOLEADOR', 'ASISTENTE', 'PRENULT
   'RESULTADO FINAL', 'JORNADA', 'RIVAL', 'ZONA DISPARO', 'LINK GOL', 'ZONA PORTERIA'];
 
 var CABECERAS_PORTERO = ['FECHA', 'PORTERO', 'EQUIPO PROPIO', 'ZONA DISPARO (NOMBRE)', 'ZONA PORTERIA (NOMBRE)',
-  'ALTURA', 'EVITABILIDAD', 'RESPONSABILIDAD', 'ACCION PORTERO', 'POSICION PARTIDA', 'ERRORES',
-  'OBSERVACIONES', 'CORRECTIVO', 'CLIP (ARCHIVO)', 'INSTANTE REMATE (s)', 'INSTANTE GOL (s)', 'FOTOGRAMAS'];
+  'ALTURA', 'EVITABILIDAD', 'RESPONSABILIDAD', 'ACCION PORTERO', 'POSICION PARTIDA', 'ERRORES', 'ACIERTOS',
+  'PIE LANZADOR', 'OBSERVACIONES', 'CORRECTIVO', 'CLIP (ARCHIVO)', 'INSTANTE REMATE (s)', 'INSTANTE GOL (s)', 'FOTOGRAMAS'];
 
 function filaGol(g, i) {
   var zc = Z.campo(g.zonaDisparo), zp = Z.porteria(g.zonaPorteria);
@@ -1035,7 +1044,7 @@ function filaGol(g, i) {
     /* capa portero */
     g.fecha || '', g.portero || '', g.equipoPropio || '', zc ? zc.nombre : '', zp ? zp.nombre : '',
     zp ? zp.altura : '', g.evitabilidad || '', g.responsabilidad || '', g.accion || '', g.posicion || '',
-    (g.errores || []).join('; '), g.observaciones || '', g.correctivo || '',
+    (g.errores || []).join('; '), (g.aciertos || []).join('; '), g.pie || '', g.observaciones || '', g.correctivo || '',
     g.videoNombre || '', g.instanteRemate != null ? g.instanteRemate : '', g.instanteGol != null ? g.instanteGol : '',
     (g.fotoRemate ? 'remate' : '') + (g.fotoRemate && g.fotoGol ? ' + ' : '') + (g.fotoGol ? 'gol' : '')
   ];
@@ -1109,6 +1118,7 @@ function hojaInforme(nombre, gs, subtitulo) {
   bloque('RESPONSABILIDAD', contar(gs.filter(function (g) { return g.responsabilidad; }), function (g) { return g.responsabilidad; }),
     { tipo: 'tarta', orden: G.RESPONSABILIDAD });
   bloque('ERRORES DEL PORTERO', contar(gs.filter(function (g) { return g.errores && g.errores.length; }), function (g) { return g.errores; }), { orden: G.ERROR });
+  bloque('ACIERTOS DEL PORTERO', contar(gs.filter(function (g) { return g.aciertos && g.aciertos.length; }), function (g) { return g.aciertos; }), { orden: G.ACIERTO });
   bloque('SUBTIPO', contar(gs, function (g) { return g.subtipo; }), { soloConDatos: true });
   var porPartido = contar(gs, function (g) { return (g.jornada ? 'J' + g.jornada + ' ' : '') + (g.rival || fechaCorta(g.fecha) || '—'); });
   bloque('GOLES POR PARTIDO', porPartido, { tipo: 'columnas', orden: Object.keys(porPartido).sort() });
@@ -1147,7 +1157,8 @@ function construirExcel() {
     ['EQUIPO', T.EQUIPO], ['PARTE', T.PARTE], ['PERIODO', T.PERIODO], ['STATUS', T.STATUS], ['TIPO', T.TIPO],
     ['GOLPEO', T.GOLPEO], ['BANDA', T.BANDA], ['CAMPO', T.CAMPO], ['VUELTA', T.VUELTA], ['AREA', T.AREA],
     ['RESULTADO FINAL', T.RESULTADO], ['EVITABILIDAD', G.EVITABILIDAD], ['RESPONSABILIDAD', G.RESPONSABILIDAD],
-    ['ACCION PORTERO', G.ACCION], ['POSICION PARTIDA', G.POSICION], ['ERRORES', G.ERROR]
+    ['ACCION PORTERO', G.ACCION], ['POSICION PARTIDA', G.POSICION], ['ERRORES', G.ERROR],
+    ['ACIERTOS', G.ACIERTO], ['PIE LANZADOR', G.PIE]
   ];
   var subtiposTodos = [];
   Object.keys(SUBTIPO).forEach(function (t) { listas.push(['SUBTIPO · ' + t, SUBTIPO[t]]); subtiposTodos = subtiposTodos.concat(SUBTIPO[t]); });
@@ -1186,7 +1197,7 @@ function construirExcel() {
    ['SUBTIPO', 'SUBTIPO (todos)'], ['GOLPEO', 'GOLPEO'], ['BANDA', 'BANDA'], ['CAMPO', 'CAMPO'], ['VUELTA', 'VUELTA'],
    ['AREA', 'AREA'], ['RESULTADO FINAL', 'RESULTADO FINAL'], ['RIVAL', 'RIVALES'], ['PORTERO', 'PORTEROS'],
    ['EVITABILIDAD', 'EVITABILIDAD'], ['RESPONSABILIDAD', 'RESPONSABILIDAD'], ['ACCION PORTERO', 'ACCION PORTERO'],
-   ['POSICION PARTIDA', 'POSICION PARTIDA']].forEach(function (par) {
+   ['POSICION PARTIDA', 'POSICION PARTIDA'], ['PIE LANZADOR', 'PIE LANZADOR']].forEach(function (par) {
     var col = colDe(par[0]), r = rangoLista(par[1]);
     if (col && r) validaciones.push({ ref: col + '2:' + col + FILAS_VALID, lista: r });
   });
@@ -1220,6 +1231,7 @@ function construirExcel() {
     tablaResumen('EVITABILIDAD (sobre valorados)', contar(valorados, function (g) { return g.evitabilidad; }), valorados.length, G.EVITABILIDAD),
     tablaResumen('RESPONSABILIDAD', contar(encajados.filter(function (g) { return g.responsabilidad; }), function (g) { return g.responsabilidad; }), total, G.RESPONSABILIDAD),
     tablaResumen('ERRORES DEL PORTERO', contar(encajados.filter(function (g) { return g.errores && g.errores.length; }), function (g) { return g.errores; }), total, G.ERROR),
+    tablaResumen('ACIERTOS DEL PORTERO', contar(encajados.filter(function (g) { return g.aciertos && g.aciertos.length; }), function (g) { return g.aciertos; }), total, G.ACIERTO),
     tablaResumen('ACCION DEL PORTERO', contar(encajados.filter(function (g) { return g.accion; }), function (g) { return g.accion; }), total, G.ACCION),
     tablaResumen('POR PORTERO', contar(encajados, function (g) { return g.portero; }), total),
     tablaResumen('POR RIVAL', contar(encajados, function (g) { return g.rival; }), total)
@@ -1280,7 +1292,7 @@ function construirExcel() {
   return MiniXLSX.crear([
     { nombre: 'LISTA GOLES', filas: lista, congelar: 1, filtro: true, validaciones: validaciones,
       anchos: [7, 11, 16, 16, 18, 14, 9, 8, 11, 22, 30, 15, 11, 10, 14, 15, 14, 9, 18, 12, 30, 13,
-               11, 16, 16, 34, 30, 8, 20, 16, 22, 18, 40, 40, 40, 30, 11, 11, 13, 14] }
+               11, 16, 16, 34, 30, 8, 20, 16, 22, 18, 40, 40, 14, 40, 40, 30, 11, 11, 13, 14] }
   ].concat(informes, [
     { nombre: 'RESUMEN', filas: resumen, cabecera: false, anchos: [44, 10, 8] },
     { nombre: 'MAPAS', filas: mapas, cabecera: false, anchos: [22, 14, 14, 14, 14, 14] },
