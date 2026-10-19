@@ -21,6 +21,10 @@ def inline(m):
     return '<script>\n%s\n</script>' % leer(m.group(1))
 html = re.sub(r'<script src="([^"]+)"></script>', inline, html)
 
+# Los enlaces a archivos externos (iconos, manifest) no existen en un
+# archivo suelto: se quitan para que el navegador no los busque.
+html = re.sub(r'<link rel="(?:icon|apple-touch-icon|manifest)" href="(?:assets/|manifest)[^"]*"[^>]*>\n?', '', html)
+
 io.open(sys.argv[1], 'w', encoding='utf-8').write(html)
 print('Generado %s (%d KB)' % (sys.argv[1], len(html) // 1024))
 PY

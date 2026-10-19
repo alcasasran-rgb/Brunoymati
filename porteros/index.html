@@ -5,21 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Celta Fortuna · Goles encajados</title>
 <meta name="description" content="Registro y análisis de goles encajados para entrenadores de porteros. Sube el clip, etiqueta el gol, actualiza el Excel.">
-<meta name="theme-color" content="#10343F">
+<meta name="theme-color" content="#0B2A4A">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%238AC3EE'/%3E%3Cpath d='M12 48V19h40v29' fill='none' stroke='%230B2A4A' stroke-width='7' stroke-linejoin='round'/%3E%3Cpath d='M12 48V19h40v29' fill='none' stroke='%23fff' stroke-width='4' stroke-linejoin='round'/%3E%3Cpath d='M22 19v29M32 19v29M42 19v29M12 29h40M12 39h40' stroke='%23fff' stroke-opacity='.5' stroke-width='1.2'/%3E%3Cpath d='M7 48h50' stroke='%230B2A4A' stroke-width='4'/%3E%3Ccircle cx='40' cy='37' r='8.5' fill='%23fff' stroke='%230B2A4A' stroke-width='2'/%3E%3Ccircle cx='40' cy='37' r='2.6' fill='%230B2A4A'/%3E%3C/svg%3E">
 <link rel="icon" href="assets/favicon.ico" sizes="any">
 <link rel="apple-touch-icon" href="assets/icono-180.png">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/styles.css">
 </head>
 <body>
 
 <header class="app-header">
+  <div class="franja" aria-hidden="true"></div>
   <div class="app-header-inner">
-    <a class="brand" href="#/" id="brand">Goles encajados</a>
+    <a class="brand" href="#/" id="brand"><span class="brand-icono" aria-hidden="true"><svg viewBox="0 0 64 64"><path d="M12 48V19h40v29" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/><path d="M22 19v29M32 19v29M42 19v29M12 29h40M12 39h40" stroke="currentColor" stroke-opacity=".45" stroke-width="1.5"/><path d="M6 48h52" stroke="currentColor" stroke-width="4"/><circle cx="40" cy="37" r="8" fill="#fff" stroke="currentColor" stroke-width="2.5"/><circle cx="40" cy="37" r="2.6" fill="currentColor"/></svg></span><span class="brand-texto"><span class="brand-club" id="brand-club">Celta Fortuna</span><span class="brand-sub" id="brand-sub">Goles encajados</span></span></a>
     <button class="btn-head" id="btn-excel-rapido" title="Actualizar el Excel">Actualizar Excel</button>
   </div>
   <div id="banner" class="banner" hidden></div>

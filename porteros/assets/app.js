@@ -260,7 +260,9 @@ window.addEventListener('hashchange', pintar);
 
 function arrancar() {
   var marca = CFG.MARCA || 'Goles encajados';
-  $('#brand').textContent = marca;
+  var partes = marca.split('·');
+  $('#brand-club').textContent = (partes[0] || marca).trim();
+  $('#brand-sub').textContent = (partes[1] || 'Goles encajados').trim();
   document.title = marca;
 
   almacen.todos().then(function (gs) {
@@ -444,6 +446,9 @@ function tarjetaGol(g) {
         (tieneLink ? '<a class="badge link" href="' + esc(g.link) + '" target="_blank" rel="noopener">🔗 enlace</a>' : '') +
       '</div>' +
     '</div>' +
+    ((g.fotoRemate || g.fotoGol) ? '<div class="gol-fotos">' +
+      (g.fotoRemate ? '<img src="' + g.fotoRemate + '" alt="Remate" title="Remate">' : '') +
+      (g.fotoGol ? '<img src="' + g.fotoGol + '" alt="Gol" title="Gol">' : '') + '</div>' : '') +
     '<a class="gol-editar" href="#/editar/' + esc(g.id) + '" aria-label="Editar">›</a>' +
   '</article>';
 }
@@ -469,7 +474,8 @@ function borradorNuevo() {
     tipo: '', subtipo: '', golpeo: '', goleador: '', asistente: '', penultimo: '',
     zonaDisparo: '', area: '', banda: '', zonaPorteria: '',
     evitabilidad: '', responsabilidad: '', accion: '', posicion: '', errores: [], observaciones: '', correctivo: '',
-    videoId: '', videoNombre: '', videoTam: 0, link: '', instante: null,
+    videoId: '', videoNombre: '', videoTam: 0, link: '',
+    instanteRemate: null, instanteGol: null, fotoRemate: '', fotoGol: '',
     _mismoDia: esMismoDia
   };
 }
@@ -755,8 +761,10 @@ function montarVideo(form, g) {
         '<button type="button" data-paso="-1">◀ fotograma</button>' +
         '<button type="button" data-paso="1">fotograma ▶</button>' +
         '<span class="sep"></span>' +
-        '<button type="button" id="btn-instante">Marcar instante del gol' + (g.instante != null ? ' (' + g.instante.toFixed(1) + 's)' : '') + '</button>' +
+        '<button type="button" class="foto" data-foto="remate">📸 Remate</button>' +
+        '<button type="button" class="foto" data-foto="gol">📸 Gol</button>' +
       '</div>' +
+      '<div class="fotos" id="fotos"></div>' +
       '<p class="nota">' + esc(nombre || '') + (tam ? ' · ' + megas(tam) + ' MB' : '') +
       (tam && megas(tam) > (CFG.AVISO_VIDEO_MB || 80) ? ' · <strong>Pesa bastante</strong>: recórtalo al gol para no llenar el móvil.' : '') + '</p>';
 
@@ -772,7 +780,8 @@ function montarVideo(form, g) {
       zona.appendChild(p);
     });
     v.addEventListener('loadedmetadata', function () {
-      if (g.instante != null && v.videoWidth) v.currentTime = g.instante;
+      var ir = g.instanteRemate != null ? g.instanteRemate : g.instanteGol;
+      if (ir != null && v.videoWidth) v.currentTime = ir;
       if (!v.videoWidth) {
         var p = document.createElement('p');
         p.className = 'nota error-video';
@@ -793,11 +802,20 @@ function montarVideo(form, g) {
       } else if (b.hasAttribute('data-paso')) {
         v.pause();
         v.currentTime = Math.max(0, v.currentTime + parseInt(b.getAttribute('data-paso'), 10) / 25);
-      } else if (b.id === 'btn-instante') {
-        g.instante = Math.round(v.currentTime * 10) / 10;
-        b.textContent = 'Marcar instante del gol (' + g.instante.toFixed(1) + 's)';
+      } else if (b.hasAttribute('data-foto')) {
+        capturarFotograma(v, g, b.getAttribute('data-foto'));
+        pintarFotos(g);
+      } else if (b.hasAttribute('data-ir')) {
+        v.pause();
+        v.currentTime = parseFloat(b.getAttribute('data-ir'));
+      } else if (b.hasAttribute('data-quitar')) {
+        var cual = b.getAttribute('data-quitar');
+        g[cual === 'remate' ? 'fotoRemate' : 'fotoGol'] = '';
+        g[cual === 'remate' ? 'instanteRemate' : 'instanteGol'] = null;
+        pintarFotos(g);
       }
     });
+    pintarFotos(g);
   }
 
   input.addEventListener('change', function () {
@@ -821,6 +839,37 @@ function montarVideo(form, g) {
       else pintarVideo(null);
     });
   } else pintarVideo(null);
+}
+
+/* Guarda el fotograma actual del vídeo como imagen JPEG (máx. 800 px de
+   ancho) dentro del propio gol, junto con el segundo exacto. */
+function capturarFotograma(v, g, cual) {
+  if (!v.videoWidth) { aviso('El vídeo aún no se ha cargado.', 'error'); return; }
+  var ancho = Math.min(800, v.videoWidth), alto = Math.round(v.videoHeight * ancho / v.videoWidth);
+  var c = document.createElement('canvas');
+  c.width = ancho; c.height = alto;
+  c.getContext('2d').drawImage(v, 0, 0, ancho, alto);
+  var dataUrl;
+  try { dataUrl = c.toDataURL('image/jpeg', 0.82); }
+  catch (e) { aviso('No se puede capturar la imagen de un vídeo enlazado desde otra web; usa un archivo.', 'error'); return; }
+  var t = Math.round(v.currentTime * 100) / 100;
+  if (cual === 'remate') { g.fotoRemate = dataUrl; g.instanteRemate = t; }
+  else { g.fotoGol = dataUrl; g.instanteGol = t; }
+  aviso('Fotograma del ' + cual + ' guardado (' + t.toFixed(2) + ' s).', 'ok');
+}
+
+function pintarFotos(g) {
+  var zona = $('#fotos');
+  if (!zona) return;
+  function tarjeta(cual, foto, t) {
+    var et = cual === 'remate' ? 'Remate' : 'Gol';
+    if (!foto) return '<div class="foto-vacia">' + et + ': sin fotograma</div>';
+    return '<figure class="foto-mini"><img src="' + foto + '" alt="' + et + '">' +
+      '<figcaption>' + et + ' · ' + (t != null ? t.toFixed(2) + ' s' : '') +
+      ' <button type="button" data-ir="' + t + '">ir</button>' +
+      ' <button type="button" data-quitar="' + cual + '">quitar</button></figcaption></figure>';
+  }
+  zona.innerHTML = tarjeta('remate', g.fotoRemate, g.instanteRemate) + tarjeta('gol', g.fotoGol, g.instanteGol);
 }
 
 /* --- Guardar --- */
@@ -961,7 +1010,7 @@ var CABECERAS_PLANTILLA = ['ID_GOL', 'EQUIPO', 'GOLEADOR', 'ASISTENTE', 'PRENULT
 
 var CABECERAS_PORTERO = ['FECHA', 'PORTERO', 'EQUIPO PROPIO', 'ZONA DISPARO (NOMBRE)', 'ZONA PORTERIA (NOMBRE)',
   'ALTURA', 'EVITABILIDAD', 'RESPONSABILIDAD', 'ACCION PORTERO', 'POSICION PARTIDA', 'ERRORES',
-  'OBSERVACIONES', 'CORRECTIVO', 'CLIP (ARCHIVO)', 'INSTANTE (s)'];
+  'OBSERVACIONES', 'CORRECTIVO', 'CLIP (ARCHIVO)', 'INSTANTE REMATE (s)', 'INSTANTE GOL (s)', 'FOTOGRAMAS'];
 
 function filaGol(g, i) {
   var zc = Z.campo(g.zonaDisparo), zp = Z.porteria(g.zonaPorteria);
@@ -975,7 +1024,8 @@ function filaGol(g, i) {
     g.fecha || '', g.portero || '', g.equipoPropio || '', zc ? zc.nombre : '', zp ? zp.nombre : '',
     zp ? zp.altura : '', g.evitabilidad || '', g.responsabilidad || '', g.accion || '', g.posicion || '',
     (g.errores || []).join('; '), g.observaciones || '', g.correctivo || '',
-    g.videoNombre || '', g.instante != null ? g.instante : ''
+    g.videoNombre || '', g.instanteRemate != null ? g.instanteRemate : '', g.instanteGol != null ? g.instanteGol : '',
+    (g.fotoRemate ? 'remate' : '') + (g.fotoRemate && g.fotoGol ? ' + ' : '') + (g.fotoGol ? 'gol' : '')
   ];
 }
 
@@ -989,6 +1039,89 @@ function tablaResumen(titulo, c, total, orden, etiqueta) {
   return filas;
 }
 
+var CABECERAS_EXTRA = ['ID APP'];
+
+/* --- Hoja INFORME: tablas a la izquierda, gráfico de cada tabla a la
+   derecha, lista de trabajo correctivo y espacio para conclusiones.
+   Preparada para imprimir en A4 vertical. --- */
+function hojaInforme(nombre, gs, subtitulo) {
+  var filas = [], graficos = [], combinar = [];
+  var total = gs.length, nPartidos = partidos(gs);
+  var fechas = gs.map(function (g) { return g.fecha; }).filter(Boolean).sort();
+  var valorados = gs.filter(function (g) { return g.evitabilidad; });
+  var evitables = gs.filter(function (g) { return g.evitabilidad === 'Evitable'; }).length;
+  var dentro = gs.filter(function (g) { return g.area === 'Dentro del Area'; }).length;
+  var abp = gs.filter(function (g) { return g.tipo === 'Acción a balón parado'; }).length;
+
+  function fila(f) { filas.push(f || []); }
+  function hasta(n) { while (filas.length < n) filas.push([]); }
+
+  fila([{ v: 'INFORME DE GOLES ENCAJADOS · ' + ((CFG.EQUIPOS || [])[0] || CFG.MARCA || '').toUpperCase(), estilo: 3 }]); combinar.push('A1:L1');
+  fila([{ v: (CFG.MARCA || 'Goles encajados') + ' · ' + subtitulo, estilo: 4 }]); combinar.push('A2:L2');
+  fila(['Periodo', fechas.length ? fechaCorta(fechas[0]) + ' – ' + fechaCorta(fechas[fechas.length - 1]) : '—', '', 'Generado', new Date().toLocaleDateString('es-ES')]);
+  fila();
+  fila([{ v: 'Partidos', estilo: 1 }, { v: 'Goles', estilo: 1 }, { v: 'Por partido', estilo: 1 }, '', { v: 'Evitables', estilo: 1 }, { v: 'Dentro del área', estilo: 1 }, { v: 'Balón parado', estilo: 1 }]);
+  fila([{ v: nPartidos, estilo: 5 }, { v: total, estilo: 5 }, { v: nPartidos ? Math.round(10 * total / nPartidos) / 10 : 0, estilo: 5 }, '',
+        { v: (valorados.length ? pct(evitables, valorados.length) : 0) + '%', estilo: 5 }, { v: pct(dentro, total) + '%', estilo: 5 }, { v: pct(abp, total) + '%', estilo: 5 }]);
+  fila([{ v: '', estilo: 0 }, '', '', '', { v: valorados.length ? evitables + ' de ' + valorados.length + ' valorados' : 'sin valorar', estilo: 0 }]);
+  fila();
+
+  /* Un bloque = tabla + gráfico al lado. */
+  function bloque(titulo, c, opts) {
+    opts = opts || {};
+    var lista = ordenado(c, opts.orden);
+    if (opts.soloConDatos) lista = lista.filter(function (x) { return x.n > 0; });
+    var inicio = filas.length;
+    fila([{ v: titulo, estilo: 4 }, { v: 'GOLES', estilo: 4 }, { v: '%', estilo: 4 }]);
+    if (!lista.length) { fila(['Sin datos']); fila(); return; }
+    lista.forEach(function (x) { fila([opts.etiqueta ? opts.etiqueta(x.k) : x.k, x.n, pct(x.n, opts.total || total)]); });
+    var altoGrafico = opts.tipo === 'tarta' ? 13 : Math.max(10, Math.min(22, lista.length + 6));
+    graficos.push({
+      tipo: opts.tipo || 'barras', titulo: titulo, hoja: nombre, serie: 'Goles',
+      cats: 'A' + (inicio + 2) + ':A' + (inicio + 1 + lista.length),
+      vals: 'B' + (inicio + 2) + ':B' + (inicio + 1 + lista.length),
+      desde: { col: 4, fila: inicio }, hasta: { col: 12, fila: inicio + altoGrafico },
+      nPuntos: lista.length, colores: opts.colores
+    });
+    hasta(inicio + Math.max(lista.length + 2, altoGrafico + 1));
+  }
+
+  bloque('TIPO DE JUGADA', contar(gs, function (g) { return g.tipo; }), { orden: T.TIPO });
+  bloque('ZONA DE PORTERÍA (1-8)', contar(gs, function (g) { return g.zonaPorteria; }),
+    { tipo: 'columnas', orden: Z.PORTERIA.map(function (z) { return String(z.n); }), etiqueta: function (k) { return etiquetaZona('porteria', k); } });
+  bloque('ZONA DE DISPARO (1-20)', contar(gs, function (g) { return g.zonaDisparo; }),
+    { soloConDatos: true, etiqueta: function (k) { return etiquetaZona('campo', k); } });
+  bloque('PERIODO', contar(gs, function (g) { return g.periodo; }), { tipo: 'columnas', orden: T.PERIODO });
+  bloque('EVITABILIDAD', contar(valorados, function (g) { return g.evitabilidad; }),
+    { tipo: 'tarta', orden: G.EVITABILIDAD, total: valorados.length, colores: ['1E7D55', 'FDB833', 'B3261E'] });
+  bloque('RESPONSABILIDAD', contar(gs.filter(function (g) { return g.responsabilidad; }), function (g) { return g.responsabilidad; }),
+    { tipo: 'tarta', orden: G.RESPONSABILIDAD });
+  bloque('ERRORES DEL PORTERO', contar(gs.filter(function (g) { return g.errores && g.errores.length; }), function (g) { return g.errores; }), { orden: G.ERROR });
+  bloque('SUBTIPO', contar(gs, function (g) { return g.subtipo; }), { soloConDatos: true });
+  var porPartido = contar(gs, function (g) { return (g.jornada ? 'J' + g.jornada + ' ' : '') + (g.rival || fechaCorta(g.fecha) || '—'); });
+  bloque('GOLES POR PARTIDO', porPartido, { tipo: 'columnas', orden: Object.keys(porPartido).sort() });
+
+  fila([{ v: 'TRABAJO CORRECTIVO PROPUESTO', estilo: 4 }, { v: '', estilo: 4 }, { v: '', estilo: 4 }]);
+  var conTrabajo = gs.filter(function (g) { return g.correctivo; });
+  if (!conTrabajo.length) fila(['— (rellena «Trabajo correctivo» en la app al valorar un gol)']);
+  conTrabajo.forEach(function (g) {
+    fila([fechaCorta(g.fecha) + ' · ' + (g.rival || '') + ' · ' + (g.minuto != null ? g.minuto + "'" : ''), g.correctivo]);
+  });
+  fila();
+  fila([{ v: 'OBSERVACIONES', estilo: 4 }, { v: '', estilo: 4 }, { v: '', estilo: 4 }]);
+  var conObs = gs.filter(function (g) { return g.observaciones; });
+  if (!conObs.length) fila(['—']);
+  conObs.forEach(function (g) {
+    fila([fechaCorta(g.fecha) + ' · ' + (g.rival || '') + ' · ' + (g.minuto != null ? g.minuto + "'" : ''), g.observaciones]);
+  });
+  fila();
+  fila([{ v: 'CONCLUSIONES DEL ENTRENADOR', estilo: 4 }, { v: '', estilo: 4 }, { v: '', estilo: 4 }]);
+  fila(['(escribe aquí)']); fila(); fila(); fila();
+
+  return { nombre: nombre, filas: filas, cabecera: false, imprimir: true, combinar: combinar, graficos: graficos,
+           anchos: [32, 11, 9, 2, 12, 13, 12, 9, 9, 9, 9, 9] };
+}
+
 function construirExcel() {
   var todos = state.goles.slice().sort(function (a, b) {
     return (a.fecha || '').localeCompare(b.fecha || '') || (a.minuto || 0) - (b.minuto || 0);
@@ -996,8 +1129,57 @@ function construirExcel() {
   var encajados = todos.filter(function (g) { return g.equipo !== 'Mi equipo'; });
   var total = encajados.length;
 
-  /* --- LISTA GOLES: la plantilla original + la capa del portero --- */
-  var lista = [CABECERAS_PLANTILLA.concat(CABECERAS_PORTERO)].concat(todos.map(filaGol));
+  /* --- TABLA MAESTRA: listas de valores (una por columna) + zonas.
+     Las columnas alimentan los desplegables de LISTA GOLES. --- */
+  var listas = [
+    ['EQUIPO', T.EQUIPO], ['PARTE', T.PARTE], ['PERIODO', T.PERIODO], ['STATUS', T.STATUS], ['TIPO', T.TIPO],
+    ['GOLPEO', T.GOLPEO], ['BANDA', T.BANDA], ['CAMPO', T.CAMPO], ['VUELTA', T.VUELTA], ['AREA', T.AREA],
+    ['RESULTADO FINAL', T.RESULTADO], ['EVITABILIDAD', G.EVITABILIDAD], ['RESPONSABILIDAD', G.RESPONSABILIDAD],
+    ['ACCION PORTERO', G.ACCION], ['POSICION PARTIDA', G.POSICION], ['ERRORES', G.ERROR]
+  ];
+  var subtiposTodos = [];
+  Object.keys(SUBTIPO).forEach(function (t) { listas.push(['SUBTIPO · ' + t, SUBTIPO[t]]); subtiposTodos = subtiposTodos.concat(SUBTIPO[t]); });
+  listas.push(['SUBTIPO (todos)', subtiposTodos]);
+  listas.push(['PORTEROS', porteros()]);
+  listas.push(['RIVALES', rivales()]);
+  var maxLen = 0;
+  listas.forEach(function (l) { if (l[1].length > maxLen) maxLen = l[1].length; });
+  var maestra = [[{ v: 'LISTAS DE VALORES (alimentan los desplegables de LISTA GOLES)', estilo: 2 }]];
+  maestra.push(listas.map(function (l) { return { v: l[0], estilo: 1 }; }));
+  for (var i = 0; i < maxLen; i++) maestra.push(listas.map(function (l) { return l[1][i] || ''; }));
+  maestra.push([]);
+  maestra.push([{ v: 'ZONAS DE DISPARO', estilo: 2 }]);
+  maestra.push([{ v: 'Nº', estilo: 1 }, { v: 'NOMBRE', estilo: 1 }, { v: 'AREA', estilo: 1 }, { v: 'BANDA', estilo: 1 }]);
+  Z.CAMPO.forEach(function (z) { maestra.push([z.n, z.nombre, z.dentroArea ? 'Dentro del Area' : 'Fuera del Area', z.banda]); });
+  maestra.push([]);
+  maestra.push([{ v: 'ZONAS DE PORTERIA', estilo: 2 }]);
+  maestra.push([{ v: 'Nº', estilo: 1 }, { v: 'NOMBRE', estilo: 1 }, { v: 'ALTURA', estilo: 1 }, { v: 'LADO', estilo: 1 }, { v: 'PALO', estilo: 1 }]);
+  Z.PORTERIA.forEach(function (z) { maestra.push([z.n, z.nombre, z.altura, z.lado, z.palo]); });
+
+  function rangoLista(nombre) {
+    for (var i = 0; i < listas.length; i++) if (listas[i][0] === nombre) {
+      var col = MiniXLSX.letraCol(i);
+      return "'TABLA MAESTRA'!$" + col + '$3:$' + col + '$' + (2 + Math.max(1, listas[i][1].length));
+    }
+    return null;
+  }
+
+  /* --- LISTA GOLES: la plantilla original + la capa del portero + id interno --- */
+  var cabeceras = CABECERAS_PLANTILLA.concat(CABECERAS_PORTERO, CABECERAS_EXTRA);
+  var lista = [cabeceras].concat(todos.map(function (g, i) { return filaGol(g, i).concat([g.id]); }));
+  function colDe(cab) { return MiniXLSX.letraCol(cabeceras.indexOf(cab)); }
+  var FILAS_VALID = Math.max(todos.length + 300, 1000);
+  var validaciones = [];
+  [['EQUIPO', 'EQUIPO'], ['PARTE', 'PARTE'], ['PERIODO', 'PERIODO'], ['STATUS', 'STATUS'], ['TIPO', 'TIPO'],
+   ['SUBTIPO', 'SUBTIPO (todos)'], ['GOLPEO', 'GOLPEO'], ['BANDA', 'BANDA'], ['CAMPO', 'CAMPO'], ['VUELTA', 'VUELTA'],
+   ['AREA', 'AREA'], ['RESULTADO FINAL', 'RESULTADO FINAL'], ['RIVAL', 'RIVALES'], ['PORTERO', 'PORTEROS'],
+   ['EVITABILIDAD', 'EVITABILIDAD'], ['RESPONSABILIDAD', 'RESPONSABILIDAD'], ['ACCION PORTERO', 'ACCION PORTERO'],
+   ['POSICION PARTIDA', 'POSICION PARTIDA']].forEach(function (par) {
+    var col = colDe(par[0]), r = rangoLista(par[1]);
+    if (col && r) validaciones.push({ ref: col + '2:' + col + FILAS_VALID, lista: r });
+  });
+  validaciones.push({ ref: colDe('ZONA DISPARO') + '2:' + colDe('ZONA DISPARO') + FILAS_VALID, entero: [1, Z.CAMPO.length] });
+  validaciones.push({ ref: colDe('ZONA PORTERIA') + '2:' + colDe('ZONA PORTERIA') + FILAS_VALID, entero: [1, Z.PORTERIA.length] });
 
   /* --- RESUMEN --- */
   var resumen = [
@@ -1032,13 +1214,12 @@ function construirExcel() {
     tablaResumen('POR RIVAL', contar(encajados, function (g) { return g.rival; }), total)
   ].forEach(function (t) { resumen = resumen.concat(t); });
 
-  /* --- Mapas por portero: la rejilla de portería (2x4) y la tabla de campo --- */
+  /* --- Mapas por portero --- */
   var mapas = [];
   var listaPorteros = porteros().filter(function (p) {
     return encajados.some(function (g) { return g.portero === p; });
   });
-  if (!listaPorteros.length) listaPorteros = ['(todos)'];
-  listaPorteros.forEach(function (p) {
+  (listaPorteros.length ? listaPorteros : ['(todos)']).forEach(function (p) {
     var gs = p === '(todos)' ? encajados : encajados.filter(function (g) { return g.portero === p; });
     var cp = contar(gs, function (g) { return g.zonaPorteria; });
     var cc = contar(gs, function (g) { return g.zonaDisparo; });
@@ -1075,42 +1256,26 @@ function construirExcel() {
   });
   var hojaPartidos = [['FECHA', 'JORNADA', 'RIVAL', 'CAMPO', 'RESULTADO', 'PORTERO', 'GOLES ENCAJADOS', 'EVITABLES', 'A BALON PARADO']]
     .concat(Object.keys(porPartido).sort().map(function (k) {
-      var p = porPartido[k];
-      var j = parseInt(p.jornada, 10);
+      var p = porPartido[k], j = parseInt(p.jornada, 10);
       return [p.fecha || '', isFinite(j) ? j : (p.jornada || ''), p.rival || '', p.campo || '', p.resultado || '', p.portero || '', p.n, p.ev, p.abp];
     }));
 
-  /* --- TABLA MAESTRA: las listas, para que los desplegables de Excel sigan existiendo --- */
-  var maestra = [[{ v: 'LISTAS DE VALORES', estilo: 2 }]];
-  var listas = [
-    ['EQUIPO', T.EQUIPO], ['PARTE', T.PARTE], ['PERIODO', T.PERIODO], ['STATUS', T.STATUS], ['TIPO', T.TIPO],
-    ['GOLPEO', T.GOLPEO], ['BANDA', T.BANDA], ['CAMPO', T.CAMPO], ['VUELTA', T.VUELTA], ['AREA', T.AREA],
-    ['RESULTADO FINAL', T.RESULTADO], ['EVITABILIDAD', G.EVITABILIDAD], ['RESPONSABILIDAD', G.RESPONSABILIDAD],
-    ['ACCION PORTERO', G.ACCION], ['POSICION PARTIDA', G.POSICION], ['ERRORES', G.ERROR]
-  ];
-  Object.keys(SUBTIPO).forEach(function (t) { listas.push(['SUBTIPO · ' + t, SUBTIPO[t]]); });
-  var maxLen = 0;
-  listas.forEach(function (l) { if (l[1].length > maxLen) maxLen = l[1].length; });
-  maestra.push(listas.map(function (l) { return { v: l[0], estilo: 1 }; }));
-  for (var i = 0; i < maxLen; i++) maestra.push(listas.map(function (l) { return l[1][i] || ''; }));
-  maestra.push([]);
-  maestra.push([{ v: 'ZONAS DE DISPARO', estilo: 2 }]);
-  maestra.push([{ v: 'Nº', estilo: 1 }, { v: 'NOMBRE', estilo: 1 }, { v: 'AREA', estilo: 1 }, { v: 'BANDA', estilo: 1 }]);
-  Z.CAMPO.forEach(function (z) { maestra.push([z.n, z.nombre, z.dentroArea ? 'Dentro del Area' : 'Fuera del Area', z.banda]); });
-  maestra.push([]);
-  maestra.push([{ v: 'ZONAS DE PORTERIA', estilo: 2 }]);
-  maestra.push([{ v: 'Nº', estilo: 1 }, { v: 'NOMBRE', estilo: 1 }, { v: 'ALTURA', estilo: 1 }, { v: 'LADO', estilo: 1 }, { v: 'PALO', estilo: 1 }]);
-  Z.PORTERIA.forEach(function (z) { maestra.push([z.n, z.nombre, z.altura, z.lado, z.palo]); });
+  /* --- Informes: uno del equipo y uno por portero --- */
+  var informes = [hojaInforme('INFORME', encajados, 'Todos los porteros')];
+  listaPorteros.forEach(function (p) {
+    informes.push(hojaInforme(('INFORME · ' + p).slice(0, 31), encajados.filter(function (g) { return g.portero === p; }), p));
+  });
 
   return MiniXLSX.crear([
-    { nombre: 'LISTA GOLES', filas: lista, congelar: 1, filtro: true,
+    { nombre: 'LISTA GOLES', filas: lista, congelar: 1, filtro: true, validaciones: validaciones,
       anchos: [7, 11, 16, 16, 18, 14, 9, 8, 11, 22, 30, 15, 11, 10, 14, 15, 14, 9, 18, 12, 30, 13,
-               11, 16, 16, 34, 30, 8, 20, 16, 22, 18, 40, 40, 40, 30, 11] },
+               11, 16, 16, 34, 30, 8, 20, 16, 22, 18, 40, 40, 40, 30, 11, 11, 13, 14] }
+  ].concat(informes, [
     { nombre: 'RESUMEN', filas: resumen, cabecera: false, anchos: [44, 10, 8] },
     { nombre: 'MAPAS', filas: mapas, cabecera: false, anchos: [22, 14, 14, 14, 14, 14] },
     { nombre: 'PARTIDOS', filas: hojaPartidos, congelar: 1, filtro: true, anchos: [11, 9, 20, 10, 11, 16, 16, 10, 14] },
-    { nombre: 'TABLA MAESTRA', filas: maestra, cabecera: false, anchos: [12, 44, 16, 14, 12, 12, 12, 12, 12, 12, 14, 20, 18, 22, 18, 26, 26, 26, 26, 26, 30] }
-  ]);
+    { nombre: 'TABLA MAESTRA', filas: maestra, cabecera: false, anchos: [12, 14, 10, 12, 22, 16, 11, 11, 15, 16, 16, 22, 18, 24, 20, 28, 26, 26, 26, 26, 32, 32, 18, 20] }
+  ]));
 }
 
 function descargar(blob, nombre) {
