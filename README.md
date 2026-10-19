@@ -1,154 +1,121 @@
-# Camino DB · Freshlegs
+# Goles encajados · app para entrenador de porteros
 
-> **Este repositorio aloja también la app de goles encajados para entrenador de
-> porteros**, en la carpeta [`porteros/`](porteros/README.md)
-> (`https://alcasasran-rgb.github.io/celtafortuna/porteros/`).
+Registra cada gol encajado desde el clip, etiqueta la jugada con **tus 20 zonas
+de campo propio y tus 8 zonas de portería**, y genera el Excel con la estructura
+de tu plantilla (`LISTA GOLES` + resúmenes). Sin backend, sin login, sin coste.
 
-Base de datos interna de proveedores del Camino de Santiago, organizada por
-**camino → etapa → nivel de precio**.
-
-- Los datos viven en una **Google Sheet**. La app solo lee.
-- Nadie del equipo necesita tocar código para añadir, cambiar o borrar proveedores.
-- Sin backend, sin login, sin base de datos. Hosting estático y gratis.
+URL cuando se publica: `https://alcasasran-rgb.github.io/celtafortuna/`
 
 ---
 
-## 1. Desplegar en 5 pasos
+## 1. Puesta en marcha
 
-**Paso 1 — Crear la Sheet.**
-Entra en [sheets.new](https://sheets.new) y crea tres pestañas con estos nombres
-exactos, en minúscula: `caminos`, `etapas`, `lugares`.
-Abre los tres archivos de la carpeta `data/` de este repositorio
-(`caminos.csv`, `etapas.csv`, `lugares.csv`) y copia el contenido de cada uno en
-su pestaña. La forma más rápida: en Google Sheets, *Archivo → Importar → Subir*,
-elige el CSV y marca **«Reemplazar hoja actual»**.
+1. Abre `config.js` y revisa porteros, rivales y jugadores. Los
+   porteros también se añaden desde la app («+ Añadir portero…»).
+2. Publica como el resto del repositorio (`./deploy.sh "porteros v1"`). La web
+   se sirve desde la rama `main` (Settings → Pages → Deploy from a branch → `main`).
+3. En el móvil o el ordenador, abre la URL → *Añadir a pantalla de inicio*.
 
-**Paso 2 — Compartir la Sheet.**
-Botón **Compartir** (arriba a la derecha) → *Acceso general* → **Cualquier
-usuario que tenga el enlace** → rol **Lector**. Sin esto la app no puede leerla.
-> Ojo: esto hace la Sheet accesible para quien tenga el enlace. Lee el aviso de
-> confidencialidad más abajo antes de meter tarifas netas.
+## 2. Flujo de trabajo (un gol en menos de un minuto)
 
-**Paso 3 — Pegar el enlace en la app.**
-Copia el enlace de la Sheet desde la barra del navegador. En este repositorio,
-abre el archivo `config.js` (desde github.com se edita con el lápiz ✏️) y pégalo
-entre las comillas:
+1. **Nuevo gol** → elige el clip (se guarda en este dispositivo) o pega el enlace.
+2. Partido: viene prerrellenado con el último gol; con tres goles del mismo
+   partido solo lo escribes una vez. El rival se elige de la lista de la liga
+   (`RIVALES` en `config.js`; «+ Otro rival…» para Copa o amistosos) y con la
+   jornada se marca sola la vuelta.
+3. Minuto → el **periodo** y la **parte** se rellenan solos.
+4. Tipo → aparecen los subtipos de tu `TABLA MAESTRA`. Goleador y asistente
+   se eligen de la lista del rival (`JUGADORES` en `config.js`) o se escriben:
+   lo que escribas queda recordado para ese rival.
+5. Toca la **zona de disparo** en el campo → **área** y **banda** se rellenan solas.
+6. Toca la **zona de portería**.
+7. Opcional: valoración del portero (evitable, responsabilidad, errores, trabajo correctivo).
+8. **Guardar**. Si has enlazado un archivo Excel, se actualiza solo.
 
-```js
-SHEET_URL: "https://docs.google.com/spreadsheets/d/1AbC...XyZ/edit",
-```
+## 3. El Excel
 
-Guarda (*Commit changes*).
+Se genera entero cada vez desde los goles guardados en la app:
 
-**Paso 4 — Encender la web.**
-En GitHub: pestaña **Settings → Pages → Build and deployment → Source:
-«Deploy from a branch» → Branch: `main` / `(root)` → Save**. GitHub publica
-la web él solo en 1–2 minutos y, a partir de ahí, cada cambio en `main` se
-publica automáticamente; desde tu ordenador basta con un comando:
-
-```bash
-./deploy.sh "he añadido hoteles de Arzúa"
-```
-
-**Paso 5 — Ponerla en el móvil.**
-Abre la URL que te da GitHub Pages
-(`https://alcasasran-rgb.github.io/celtafortuna/`) en el móvil del mostrador →
-menú del navegador → **Añadir a pantalla de inicio**. Queda como una app.
-
-> **Los cambios en la Sheet tardan hasta 5 minutos en verse**: Google cachea el
-> CSV. El botón ↻ de la cabecera fuerza una descarga nueva.
-
----
-
-## 2. Cómo añadir un alojamiento nuevo (10 líneas)
-
-1. Abre la Sheet, pestaña **lugares**.
-2. Ve a la primera fila vacía del final.
-3. `id`: cualquier código que no se repita. Vale `lug-014`.
-4. `camino_id`: `frances`. `etapa_id`: el id de la etapa (`frances-e3` = Palas de Rei → Arzúa).
-5. `localidad`: el pueblo. `categoria`: `alojamiento`. `nivel`: `VIP`, `PRO` o `LOWCOST`.
-6. `nombre` y `tipo` (hotel, pazo, casa rural, pensión, albergue…).
-7. `telefono` y `whatsapp` con prefijo: `+34 981 000 000`. Son los botones de la ficha.
-8. `precio_orientativo`: texto libre, como lo dirías: `90–120 € hab. doble`.
-9. `verificado_fecha`: la fecha de hoy en formato `2026-08-30`. A los 12 meses la ficha avisa sola.
-10. `activo`: `sí`. Guarda. En el móvil, pulsa ↻ y ya está.
-
-**Para borrar un proveedor**, no borres la fila: pon `activo` en `no`. Así
-desaparece de la app pero conservas el historial y el teléfono.
-
----
-
-## 3. Las tres pestañas
-
-**caminos** — `id · nombre · descripcion · orden · activo`
-**etapas** — `id · camino_id · orden · origen · destino · km · notas`
-**lugares** — `id · camino_id · etapa_id · localidad · categoria · nivel · nombre ·
-tipo · telefono · whatsapp · email · web · enlace_reserva · precio_orientativo ·
-google_maps_url · valoracion_propia · contacto_persona · acuerdo ·
-partner_freshlegs · orden · notas · verificado_fecha · activo`
-
-Reglas que aplica la app:
-
-| Columna | Qué acepta |
+| Hoja | Qué lleva |
 |---|---|
-| `activo`, `partner_freshlegs` | `sí`, `si`, `x`, `1`, `true` = sí. Vacío o cualquier otra cosa = no. |
-| `nivel` | `VIP`, `PRO`, `LOWCOST`. Obligatorio en alojamientos; puede ir vacío en el resto. |
-| `categoria` | Texto libre. Las conocidas salen con nombre bonito; **una categoría nueva funciona sin tocar código**. |
-| `precio_orientativo` | Texto libre. Escribe rangos si quieres. |
-| `verificado_fecha` | `2026-08-30` o `30/08/2026`. Vacío = «Sin verificar» en rojo. |
-| `google_maps_url` | Opcional. Si lo dejas vacío, el botón Mapa busca por nombre + localidad. |
-| `orden` | Opcional. Número para forzar qué ficha sale primero. Vacío = orden alfabético. |
+| `LISTA GOLES` | Las 22 columnas de tu plantilla, en el mismo orden, + 15 columnas de análisis del portero |
+| `RESUMEN` | Totales y tablas por tipo, subtipo, periodo, golpeo, marcador, área, banda, zona de portería, zona de disparo, evitabilidad, responsabilidad, errores, portero y rival |
+| `MAPAS` | Por portero: rejilla de portería 2×4 y rejilla de campo 4×5 con conteos |
+| `PARTIDOS` | Goles encajados, evitables y a balón parado por partido |
+| `TABLA MAESTRA` | Las listas de valores y la definición de las 28 zonas |
 
-Las cabeceras se leen sin distinguir mayúsculas ni acentos: `Teléfono`,
-`telefono` y `TELEFONO` son la misma columna.
+**En Chrome o Edge de ordenador** → pestaña Excel → *Enlazar un archivo…* →
+eliges dónde guardarlo una vez y a partir de ahí la app sobrescribe ese archivo
+cada vez que guardas un gol. En móvil o Safari se descarga como archivo nuevo.
 
----
+**Para verlo desde el móvil y otros sitios**: enlaza el archivo dentro de una
+carpeta de **iCloud Drive, OneDrive, Google Drive para escritorio o Dropbox**. La app lo
+sobrescribe en el ordenador, la sincronización lo sube y lo abres desde
+cualquier dispositivo con Excel o la app de Drive. Los vídeos no viajan: se
+quedan en el ordenador donde se añadieron.
 
-## 4. Qué hace la app
+> El Excel es la **salida**; la base de datos es la app. Si editas el Excel a
+> mano, la siguiente actualización lo pisa.
+> Ten el archivo **cerrado en Excel** al guardar goles: si está abierto, el
+> sistema puede bloquearlo y la app no podrá escribirlo (avisa y descarga una copia).
 
-- **Caminos** → tarjetas grandes de cada camino activo.
-- **Camino** → sus etapas en orden, con origen, destino y km.
-- **Etapa** → pestañas VIP / PRO / LOWCOST con los alojamientos, y debajo chips
-  con las demás categorías **que tengan datos en esa etapa**. Las vacías no salen.
-- **Ficha** → llamar, WhatsApp, web, reservar, mapa. Badge *Partner Freshlegs*,
-  valoración propia y aviso naranja si hace más de 12 meses que no se verifica.
-- **Buscar** → por nombre y localidad, sin importar acentos.
-- **Roadbook** → marca un alojamiento por etapa y nivel, pon el nombre del cliente
-  y pulsa *Imprimir / Guardar PDF*. Sale **una etapa por página**.
-- **Cobertura** → tabla camino × etapa × nivel. En rojo lo que falta por conseguir.
+## 4. Zonas
 
-La selección del roadbook y el nombre del cliente se guardan en el propio móvil,
-no en la Sheet. Cada teléfono tiene su propia selección.
+Numeración de tus dibujos. Izquierda y derecha son siempre las del dibujo.
 
-**Copia de seguridad en el móvil.** La app guarda en el teléfono la última
-descarga de la Sheet. Si Google va lento o la Sheet no responde, sigues viendo
-los datos con un aviso de «estás viendo la última copia». Esto **no** es modo
-offline completo: si el móvil se queda sin datos, la propia web tampoco carga.
+**Campo propio** (portería arriba): 1 área pequeña centro · 2 frontal del área ·
+3/4 área pequeña izq./dcha. · 5/6 semi izq./dcha. del área · 7/8 laterales del
+área · 9/10 bandas a la altura del área · 11/12 bandas franja media · 13/14
+interiores franja media · 15/16 bandas franja lejana · 17/18 interiores franja
+lejana · 19 centro franja media · 20 centro franja lejana.
+Dentro del área = 1-8. Impares = izquierda, pares = derecha.
 
----
+**Portería** (vista frontal desde el campo): 1/2 alta centro izq./dcha. ·
+3/4 baja centro izq./dcha. · 5/6 escuadras · 7/8 junto al palo abajo.
 
-## 5. Aviso de confidencialidad (importante)
+Si hay que mover una línea, se toca solo `assets/zonas.js`.
 
-Sin backend no hay forma de pedir contraseña. Cualquiera que tenga la URL de la
-Sheet o la de la web puede leer los datos, y una Sheet «publicada» puede acabar
-indexada por Google.
+## 5. Icono en el escritorio
 
-Consecuencia práctica: **no escribas en la Sheet nada que te dolería ver fuera**.
-En concreto, en la columna `acuerdo` pon el tipo (`tarifa neta`, `comisión`) pero
-no los importes ni los porcentajes. Guarda las condiciones económicas en un
-documento aparte que la app no lea.
+- **Mac**: abre `assets/icono-512.png` en Vista Previa, `⌘A`, `⌘C`; selecciona
+  `goles-encajados.html` en el Finder, `⌘I`, clic en el icono pequeño de arriba
+  a la izquierda y `⌘V`.
+- **Windows**: deja `goles-encajados.html`, `icono-goles.ico` (es
+  `assets/favicon.ico`) y `crear-acceso-directo.bat` en la misma carpeta y haz
+  doble clic en el `.bat`: crea el acceso directo en el escritorio con el icono.
+- **Publicada con URL**: Chrome → *Instalar aplicación* (o *Añadir a pantalla de
+  inicio* en el móvil) usa el icono del `manifest.webmanifest`.
 
----
+## 6. Vídeos y copias
 
-## 6. Archivos del repositorio
+- El clip se guarda **en el navegador del dispositivo** donde lo metes. No se
+  sube a ningún sitio. Para compartirlo, usa el campo *enlace* (Drive, YouTube…).
+- `GUARDAR_VIDEO: false` en `config.js` si no quieres que la app almacene vídeo.
+- Pestaña Excel → *Descargar copia (.json)* guarda todos los goles (sin vídeos)
+  para cambiar de dispositivo o restaurar.
+
+## 7. Archivos
 
 ```
-index.html          la app (una sola página)
-config.js           ← el único archivo que se toca: el enlace de la Sheet
-assets/app.js       toda la lógica
-assets/styles.css   todo el diseño
-data/*.csv          los tres CSV de arranque, listos para importar en la Sheet
-deploy.sh           publicar con un comando
+index.html        la app
+config.js         ← lo único que se toca: porteros, equipos, nombre del Excel
+assets/app.js     lógica y vistas
+assets/zonas.js   geometría y nombres de las 20 + 8 zonas
+assets/xlsx-min.js generador de .xlsx sin librerías externas
+assets/styles.css diseño
 ```
 
-Y en `DECISIONES.md`, lo que decidí por mi cuenta y lo que quedó fuera.
+## 8. Decisiones tomadas
+
+- **Mismos valores que tu `TABLA MAESTRA`** (tipos, subtipos, golpeo…) para que
+  tus tablas dinámicas sigan funcionando si copias `LISTA GOLES` a tu archivo.
+- `ZONA DISPARO` pasa de 1-63 a **1-20** y `ZONA PORTERIA` de 1-35 a **1-8**.
+- El subtipo `Juego Directo + ` de tu plantilla tenía el nombre sin terminar; lo
+  he dejado como `Juego Directo +`. Dime qué debe decir.
+- `PERIODO`, `PARTE`, `AREA` y `BANDA` se calculan solos pero se pueden cambiar.
+- Añadida la capa de análisis del portero (15 columnas al final). Es opcional
+  en el formulario: etiquetar rápido sigue siendo posible.
+- Sin librerías externas: el .xlsx se construye en `xlsx-min.js` (ZIP sin
+  comprimir; Excel, Numbers y LibreOffice lo abren igual).
+- Los datos viven en el dispositivo. Sin backend no hay sincronización entre
+  móvil y ordenador: usa la copia .json.
