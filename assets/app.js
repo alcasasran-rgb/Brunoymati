@@ -164,6 +164,7 @@ var state = {
   filtro: { portero: '', rival: '', equipo: '' },
   porterosExtra: [],
   informe: { tab: 'resumen', orden: 'fecha', desc: true, buscar: '', zc: '', zp: '' },
+  volverA: '#/',  /* a dónde vuelve el formulario al guardar o cancelar */
   excelHandle: null,
   vista: 'registro'
 };
@@ -404,6 +405,7 @@ function etiquetaZona(tipo, n) {
 
 function vistaRegistro(app) {
   app.onclick = null;
+  state.volverA = '#/';
   var gs = golesFiltrados();
   var ps = porteros(), rs = rivalesConGoles();
 
@@ -520,10 +522,12 @@ function vistaFormulario(app, id) {
   state.borrador = g;
   state.videoArchivo = null;
 
+  var volver = state.volverA || '#/';
+  var etiquetaVolver = id ? (volver.indexOf('#/informe') === 0 ? '← Volver al informe' : '← Volver al registro') : 'Cancelar';
   var html =
   '<form class="vista formulario" id="form-gol" autocomplete="off">' +
     '<div class="vista-cab"><h1>' + (id ? 'Editar gol' : 'Nuevo gol') + '</h1>' +
-      '<a class="btn" href="#/">Cancelar</a></div>' +
+      '<a class="btn" href="' + esc(volver) + '">' + etiquetaVolver + '</a></div>' +
 
     /* ---- Vídeo ---- */
     '<section class="bloque"><h2>1 · Clip del gol</h2>' +
@@ -606,6 +610,7 @@ function vistaFormulario(app, id) {
     '<div class="acciones">' +
       '<button type="submit" class="btn primary grande" data-accion="guardar">Guardar gol</button>' +
       (!id ? '<button type="submit" class="btn grande" data-accion="otro">Guardar y añadir otro</button>' : '') +
+      (id ? '<a class="btn grande" href="' + esc(volver) + '">' + etiquetaVolver + '</a>' : '') +
       (id ? '<button type="button" class="btn peligro" id="btn-borrar">Borrar este gol</button>' : '') +
     '</div>' +
   '</form>';
@@ -753,7 +758,7 @@ function montarFormulario(app, g, editando) {
       .then(function () {
         state.goles = state.goles.filter(function (x) { return x.id !== g.id; });
         aviso('Gol borrado.');
-        navegar('#/');
+        navegar(state.volverA || '#/');
       });
   });
 }
@@ -948,7 +953,7 @@ function guardarGol(g, accion) {
     } else aviso('Gol guardado.' + (state.excelHandle ? ' Actualizando Excel…' : ''), 'ok');
     if (state.excelHandle) exportarExcel(true);
     if (accion === 'otro') { if (ruta().vista === 'nuevo') pintar(); else navegar('#/nuevo'); }
-    else navegar('#/');
+    else navegar(state.volverA || '#/');
   }).catch(function (e) {
     aviso('No se ha podido guardar: ' + (e && e.message || e), 'error');
   });
@@ -1129,6 +1134,7 @@ function vistaInforme(app, sub) {
   /* Un solo manejador por render: #app persiste entre vistas y los
      addEventListener se irían acumulando. */
   app.onclick = function (e) {
+    if (e.target.closest('a[href^="#/editar/"]')) { state.volverA = location.hash || '#/informe'; return; }
     var zonaCampo = e.target.closest('#mapa-campo [data-zona]');
     if (zonaCampo) { var n1 = zonaCampo.getAttribute('data-zona'); state.informe.zc = state.informe.zc === n1 ? '' : n1; pintar(); return; }
     var zonaPort = e.target.closest('#mapa-porteria [data-zona]');
@@ -1143,7 +1149,7 @@ function vistaInforme(app, sub) {
       return;
     }
     var tr = e.target.closest('tr[data-id]');
-    if (tr) navegar('#/editar/' + tr.getAttribute('data-id'));
+    if (tr) { state.volverA = location.hash || '#/informe'; navegar('#/editar/' + tr.getAttribute('data-id')); }
   };
 }
 
