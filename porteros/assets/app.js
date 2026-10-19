@@ -1398,14 +1398,14 @@ function vistaExcel(app) {
         ? (conHandle
             ? '<p class="nota ok">Archivo enlazado: <strong>' + esc(state.excelHandle.name) + '</strong>. Cada vez que guardes un gol se actualiza solo.</p>'
             : '<p class="nota">En Chrome o Edge de ordenador puedes <strong>enlazar un archivo</strong>: elige dónde guardarlo una vez y a partir de ahí la app lo sobrescribe sola cada vez que guardes un gol. ' +
-              'Si lo guardas en una carpeta de <strong>OneDrive, Google Drive o Dropbox</strong>, lo verás actualizado desde el móvil y cualquier otro sitio.</p>')
+              'Si lo guardas en una carpeta de <strong>iCloud Drive, OneDrive, Google Drive o Dropbox</strong>, lo verás actualizado desde el móvil y cualquier otro sitio.</p>')
         : '<p class="nota">En este navegador el Excel se descarga como archivo nuevo cada vez (en el móvil, a la carpeta de descargas). Para que se actualice solo en el sitio, abre la app en Chrome o Edge de ordenador.</p>') +
       '<div class="acciones">' +
         '<button type="button" class="btn primary grande" id="btn-excel">' + (conHandle ? 'Actualizar ahora' : 'Descargar Excel') + '</button>' +
         (soportaFS ? '<button type="button" class="btn grande" id="btn-enlazar">' + (conHandle ? 'Cambiar archivo enlazado' : 'Enlazar un archivo…') + '</button>' : '') +
       '</div>' +
       '<p class="nota">Si editas el Excel a mano, la siguiente actualización lo sobrescribe. La base de datos es la app; el Excel es la salida. ' +
-      'Ten el archivo <strong>cerrado en Excel</strong> al guardar goles: si está abierto, Windows lo bloquea y la app no puede escribirlo.</p>' +
+      'Ten el archivo <strong>cerrado en Excel</strong> al guardar goles: si está abierto, el sistema puede bloquearlo y la app no podrá escribirlo.</p>' +
     '</section>' +
 
     '<section class="bloque">' +

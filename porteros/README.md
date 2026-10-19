@@ -48,15 +48,15 @@ eliges dónde guardarlo una vez y a partir de ahí la app sobrescribe ese archiv
 cada vez que guardas un gol. En móvil o Safari se descarga como archivo nuevo.
 
 **Para verlo desde el móvil y otros sitios**: enlaza el archivo dentro de una
-carpeta de **OneDrive, Google Drive para escritorio o Dropbox**. La app lo
+carpeta de **iCloud Drive, OneDrive, Google Drive para escritorio o Dropbox**. La app lo
 sobrescribe en el ordenador, la sincronización lo sube y lo abres desde
 cualquier dispositivo con Excel o la app de Drive. Los vídeos no viajan: se
 quedan en el ordenador donde se añadieron.
 
 > El Excel es la **salida**; la base de datos es la app. Si editas el Excel a
 > mano, la siguiente actualización lo pisa.
-> Ten el archivo **cerrado en Excel** al guardar goles: si está abierto,
-> Windows lo bloquea y la app no puede escribirlo (avisa y descarga una copia).
+> Ten el archivo **cerrado en Excel** al guardar goles: si está abierto, el
+> sistema puede bloquearlo y la app no podrá escribirlo (avisa y descarga una copia).
 
 ## 4. Zonas
 
@@ -74,7 +74,18 @@ Dentro del área = 1-8. Impares = izquierda, pares = derecha.
 
 Si hay que mover una línea, se toca solo `assets/zonas.js`.
 
-## 5. Vídeos y copias
+## 5. Icono en el escritorio
+
+- **Mac**: abre `assets/icono-512.png` en Vista Previa, `⌘A`, `⌘C`; selecciona
+  `goles-encajados.html` en el Finder, `⌘I`, clic en el icono pequeño de arriba
+  a la izquierda y `⌘V`.
+- **Windows**: deja `goles-encajados.html`, `icono-goles.ico` (es
+  `assets/favicon.ico`) y `crear-acceso-directo.bat` en la misma carpeta y haz
+  doble clic en el `.bat`: crea el acceso directo en el escritorio con el icono.
+- **Publicada con URL**: Chrome → *Instalar aplicación* (o *Añadir a pantalla de
+  inicio* en el móvil) usa el icono del `manifest.webmanifest`.
+
+## 6. Vídeos y copias
 
 - El clip se guarda **en el navegador del dispositivo** donde lo metes. No se
   sube a ningún sitio. Para compartirlo, usa el campo *enlace* (Drive, YouTube…).
@@ -82,7 +93,7 @@ Si hay que mover una línea, se toca solo `assets/zonas.js`.
 - Pestaña Excel → *Descargar copia (.json)* guarda todos los goles (sin vídeos)
   para cambiar de dispositivo o restaurar.
 
-## 6. Archivos
+## 7. Archivos
 
 ```
 porteros/index.html        la app
@@ -93,7 +104,7 @@ porteros/assets/xlsx-min.js generador de .xlsx sin librerías externas
 porteros/assets/styles.css diseño
 ```
 
-## 7. Decisiones tomadas
+## 8. Decisiones tomadas
 
 - **Mismos valores que tu `TABLA MAESTRA`** (tipos, subtipos, golpeo…) para que
   tus tablas dinámicas sigan funcionando si copias `LISTA GOLES` a tu archivo.
