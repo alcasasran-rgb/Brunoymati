@@ -161,7 +161,7 @@ var state = {
   goles: [],
   borrador: null,      /* el gol que se está editando */
   videoArchivo: null,  /* File pendiente de guardar */
-  filtro: { portero: '', rival: '', equipo: 'Rival' },
+  filtro: { portero: '', rival: '', equipo: '' },
   porterosExtra: [],
   excelHandle: null,
   vista: 'registro'
@@ -185,6 +185,12 @@ function porteros() {
     if (g.portero && lista.indexOf(g.portero) < 0) lista.push(g.portero);
   });
   return lista;
+}
+
+function rivalesConGoles() {
+  var lista = [];
+  state.goles.forEach(function (g) { if (g.rival && lista.indexOf(g.rival) < 0) lista.push(g.rival); });
+  return lista.sort(function (a, b) { return a.localeCompare(b, 'es'); });
 }
 
 function rivales() {
@@ -379,11 +385,10 @@ function etiquetaZona(tipo, n) {
 
 function vistaRegistro(app) {
   var gs = golesFiltrados();
-  var ps = porteros(), rs = rivales();
+  var ps = porteros(), rs = rivalesConGoles();
 
   var filtros =
     '<div class="filtros">' +
-      chips('f-equipo', ['Rival', 'Mi equipo', 'Todos'], state.filtro.equipo || 'Todos') +
       (ps.length > 1 ? campoSelect('f-portero', 'Portero', ps, state.filtro.portero, 'Todos los porteros') : '') +
       (rs.length ? campoSelect('f-rival', 'Rival', rs, state.filtro.rival, 'Todos los rivales') : '') +
     '</div>';
@@ -434,7 +439,6 @@ function tarjetaGol(g) {
     '<div class="gol-cuerpo">' +
       '<div class="gol-tit">' + esc(g.tipo || 'Sin tipo') + (g.subtipo ? ' <span class="muted">· ' + esc(g.subtipo) + '</span>' : '') + '</div>' +
       '<div class="gol-meta">' +
-        (g.equipo === 'Mi equipo' ? '<span class="badge favor">A favor</span> ' : '') +
         (g.portero ? esc(g.portero) + ' · ' : '') +
         'Disparo <strong>' + (zc ? zc.n : '?') + '</strong> ' + (zc ? '<span class="muted">' + esc(zc.corto) + '</span>' : '') +
         ' · Portería <strong>' + (zp ? zp.n : '?') + '</strong> ' + (zp ? '<span class="muted">' + esc(zp.corto) + '</span>' : '') +
@@ -468,7 +472,8 @@ function borradorNuevo() {
     id: idNuevo(), creado: Date.now(),
     fecha: ultimo.fecha || hoyISO(), jornada: ultimo.jornada || '', rival: ultimo.rival || '',
     campo: ultimo.campo || 'Local', vuelta: ultimo.vuelta || 'Primera Vuelta', resultado: ultimo.resultado || '',
-    equipo: 'Rival', portero: ultimo.portero || (CFG.PORTEROS || [])[0] || '',
+    equipo: 'Rival', /* siempre: la app registra goles encajados */
+    portero: ultimo.portero || (CFG.PORTEROS || [])[0] || '',
     equipoPropio: ultimo.equipoPropio || (CFG.EQUIPOS || [])[0] || '',
     parte: '', minuto: '', periodo: '', status: '',
     tipo: '', subtipo: '', golpeo: '', goleador: '', asistente: '', penultimo: '',
@@ -521,7 +526,6 @@ function vistaFormulario(app, id) {
         '<div><span class="et">Campo</span>' + chips('campo', T.CAMPO, g.campo) + '</div>' +
         '<div><span class="et">Vuelta</span>' + chips('vuelta', T.VUELTA, g.vuelta) + '</div>' +
         '<div><span class="et">Resultado final</span>' + chips('resultado', T.RESULTADO, g.resultado) + '</div>' +
-        '<div><span class="et">Gol de…</span>' + chips('equipo', T.EQUIPO, g.equipo) + '</div>' +
       '</div>' +
     '</section>' +
 
@@ -748,7 +752,7 @@ function montarVideo(form, g) {
     if (!src) {
       zona.innerHTML = g.videoNombre
         ? '<p class="nota">Clip: <strong>' + esc(g.videoNombre) + '</strong>' + (g.videoTam ? ' (' + megas(g.videoTam) + ' MB)' : '') + '</p>'
-        : '<div class="sin-video">Sin clip. Elige un vídeo o pega un enlace.</div>';
+        : '<div class="sin-video"><strong>Arrastra aquí el vídeo</strong> desde una carpeta, o elige el archivo, o pega un enlace.</div>';
       return;
     }
     zona.innerHTML =
@@ -818,9 +822,11 @@ function montarVideo(form, g) {
     pintarFotos(g);
   }
 
-  input.addEventListener('change', function () {
-    var f = input.files && input.files[0];
+  function cargarArchivo(f) {
     if (!f) return;
+    if (f.type && f.type.indexOf('video/') !== 0 && !/\.(mp4|m4v|mov|webm|mkv|avi)$/i.test(f.name)) {
+      aviso('Eso no parece un vídeo (' + f.name + ').', 'error'); return;
+    }
     g.videoNombre = f.name; g.videoTam = f.size;
     var limite = (CFG.MAX_VIDEO_MB || 600);
     if (megas(f.size) > limite) {
@@ -830,7 +836,23 @@ function montarVideo(form, g) {
       state.videoArchivo = f;
     }
     pintarVideo(URL.createObjectURL(f), f.name, f.size);
+  }
+
+  input.addEventListener('change', function () {
+    cargarArchivo(input.files && input.files[0]);
     input.value = '';
+  });
+
+  /* Arrastrar el vídeo desde el explorador y soltarlo en cualquier parte
+     del formulario. */
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    form.addEventListener(ev, function (e) { e.preventDefault(); form.classList.add('arrastrando'); });
+  });
+  form.addEventListener('dragleave', function (e) { if (!form.contains(e.relatedTarget)) form.classList.remove('arrastrando'); });
+  form.addEventListener('drop', function (e) {
+    e.preventDefault();
+    form.classList.remove('arrastrando');
+    cargarArchivo(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]);
   });
 
   if (g.videoId) {
@@ -954,9 +976,8 @@ function vistaPanel(app) {
     }).join('') + '</div>';
   }
 
-  var ps = porteros(), rs = rivales();
+  var ps = porteros(), rs = rivalesConGoles();
   var filtros = '<div class="filtros">' +
-      chips('f-equipo', ['Rival', 'Mi equipo', 'Todos'], state.filtro.equipo || 'Todos') +
       (ps.length > 1 ? campoSelect('f-portero', 'Portero', ps, state.filtro.portero, 'Todos los porteros') : '') +
       (rs.length ? campoSelect('f-rival', 'Rival', rs, state.filtro.rival, 'Todos los rivales') : '') +
     '</div>';
@@ -992,15 +1013,6 @@ function vistaPanel(app) {
     s.addEventListener('change', function () { state.filtro[s.name.replace('f-', '')] = s.value; pintar(); });
   });
 }
-
-/* Filtro de equipo compartido entre registro y panel (chips sin formulario). */
-document.addEventListener('click', function (e) {
-  var b = e.target.closest('[data-chip="f-equipo"]');
-  if (!b) return;
-  var v = b.getAttribute('data-valor');
-  state.filtro.equipo = v === 'Todos' ? '' : v;
-  pintar();
-});
 
 /* ============================== Excel ============================== */
 
@@ -1186,7 +1198,6 @@ function construirExcel() {
     [{ v: (CFG.MARCA || 'Goles encajados') + ' · resumen', estilo: 2 }, { v: '', estilo: 2 }, { v: '', estilo: 2 }],
     ['Generado', new Date().toLocaleString('es-ES')],
     ['Goles encajados', total],
-    ['Goles a favor registrados', todos.length - total],
     ['Partidos con goles encajados', partidos(encajados)],
     ['Goles encajados por partido', partidos(encajados) ? Math.round(10 * total / partidos(encajados)) / 10 : 0],
     []

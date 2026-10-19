@@ -125,7 +125,9 @@ input,select,textarea{font:inherit}
 /* ---------- Vídeo ---------- */
 #zona-video{margin-bottom:10px}
 #zona-video video{width:100%;max-height:60vh;background:#000;border-radius:10px;display:block}
-.sin-video{border:1.5px dashed var(--line);border-radius:10px;padding:22px;text-align:center;color:var(--muted);font-size:14px}
+.sin-video{border:2px dashed var(--celeste-fuerte);background:var(--primary-soft);border-radius:10px;padding:26px;text-align:center;color:var(--primary);font-size:14px}
+.formulario.arrastrando #zona-video{outline:3px dashed var(--accent);outline-offset:4px;border-radius:10px}
+.formulario.arrastrando .sin-video{background:var(--accent-soft);border-color:var(--accent)}
 .vid-ctl{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
 .vid-ctl button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px;font-size:13px;font-weight:500;min-height:34px}
 .vid-ctl button.sel{background:var(--primary);color:#fff;border-color:var(--primary)}
