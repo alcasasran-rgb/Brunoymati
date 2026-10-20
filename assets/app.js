@@ -174,6 +174,7 @@ var state = {
   informe: { tab: 'resumen', orden: 'fecha', desc: true, buscar: '', zc: '', zp: '' },
   volverA: '#/',  /* a dónde vuelve el formulario al guardar o cancelar */
   modo: (function () { try { return localStorage.getItem('porteros:modo') || 'goles'; } catch (e) { return 'goles'; } })(),
+  fotosPorteros: {},
   excelHandle: null,
   vista: 'registro'
 };
@@ -278,6 +279,7 @@ function pintar() {
   else if (r.vista !== 'exportar' && r.vista !== 'excel') state.modo = 'goles';
   try { localStorage.setItem('porteros:modo', state.modo); } catch (e) {}
   pintarModo();
+  if (r.vista !== 'informe-pdf') document.body.classList.remove('imprimiendo');
 
   if (esFin && window.FIN) {
     window.FIN.pintar(app, r);
@@ -296,11 +298,13 @@ function pintar() {
 
   if (r.vista === 'nuevo')       vistaFormulario(app, null);
   else if (r.vista === 'editar') vistaFormulario(app, r.id);
+  else if (r.vista === 'informe-pdf') vistaInformePDF(app);
   else if (r.vista === 'informe' || r.vista === 'panel') vistaInforme(app, r.id);
   else if (r.vista === 'exportar' || r.vista === 'excel') vistaExportar(app);
   else                           vistaRegistro(app);
 
-  var activa = r.vista === 'editar' ? 'nuevo' : r.vista === 'panel' ? 'informe' : r.vista === 'excel' ? 'exportar' : r.vista;
+  document.body.classList.toggle('imprimiendo', r.vista === 'informe-pdf');
+  var activa = r.vista === 'editar' ? 'nuevo' : (r.vista === 'panel' || r.vista === 'informe-pdf') ? 'informe' : r.vista === 'excel' ? 'exportar' : r.vista;
   $('.tabbar').innerHTML = htmlTabbar(TABBAR_GOLES, activa);
   actualizarBotonExcel();
   var pill = $('#pill-total');
@@ -335,6 +339,9 @@ function arrancar() {
     return almacen.ajuste('porteros');
   }).then(function (ps) {
     state.porterosExtra = Array.isArray(ps) ? ps : [];
+    return almacen.ajuste('fotosPorteros');
+  }).then(function (f) {
+    state.fotosPorteros = f && typeof f === 'object' ? f : {};
     return window.FIN && window.FIN.cargar ? window.FIN.cargar() : null;
   }).then(function () {
     pintar();
@@ -447,6 +454,54 @@ function svgPorteria(sel, opts) {
 function etiquetaZona(tipo, n) {
   var z = tipo === 'campo' ? Z.campo(n) : Z.porteriaOFuera(n);
   return z ? z.n + ' · ' + z.nombre : '—';
+}
+
+/* Reduce una imagen a maxPx de lado y la devuelve como data URL. */
+function leerImagen(file, maxPx) {
+  return new Promise(function (res, rej) {
+    var url = URL.createObjectURL(file), img = new Image();
+    img.onload = function () {
+      var k = Math.min(1, maxPx / Math.max(img.width, img.height));
+      var c = document.createElement('canvas');
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      res(c.toDataURL(file.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.85));
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); rej(new Error('No es una imagen')); };
+    img.src = url;
+  });
+}
+
+function iniciales(nombre) {
+  return String(nombre || '?').split(/\s+/).slice(0, 2).map(function (p) { return p.charAt(0).toUpperCase(); }).join('');
+}
+
+function avatarPortero(nombre) {
+  var f = state.fotosPorteros[nombre];
+  return f ? '<img class="avatar" src="' + f + '" alt="' + esc(nombre) + '">'
+           : '<span class="avatar avatar-ini">' + esc(iniciales(nombre)) + '</span>';
+}
+
+function escudoPropio() {
+  var eq = (CFG.EQUIPOS || [])[0] || '';
+  var e = window.FIN && window.FIN._D && window.FIN._D.equipos[eq];
+  return e && e.escudo ? '<img class="escudo" src="' + e.escudo + '" alt="' + esc(eq) + '">' : '';
+}
+
+/* Cabecera con la foto del portero (clic para subirla). */
+function cabeceraPortero(app, nombre) {
+  var input = $('#in-foto-portero', app);
+  if (!input) return;
+  input.addEventListener('change', function (e) {
+    var f = e.target.files && e.target.files[0];
+    if (!f) return;
+    leerImagen(f, 320).then(function (d) {
+      state.fotosPorteros[nombre] = d;
+      return almacen.ponAjuste('fotosPorteros', state.fotosPorteros);
+    }).then(function () { aviso('Foto guardada.', 'ok'); pintar(); })
+      .catch(function () { aviso('No se pudo leer la imagen.', 'error'); });
+  });
 }
 
 /* ============================== Vista: registro ============================== */
@@ -1170,9 +1225,14 @@ function vistaInforme(app, sub) {
   else if (tab === 'evolucion') cuerpo = informeEvolucion(gs);
   else cuerpo = informeResumen(gs);
 
-  app.innerHTML = '<div class="vista"><div class="vista-cab"><h1>Informe</h1>' +
-    '<a class="btn" href="#/exportar">Exportar…</a></div>' +
-    (state.goles.length ? filtros + barra : '') + cuerpo + '</div>';
+  var cabPortero = state.filtro.portero
+    ? '<div class="equipo-cab"><label class="avatar-sel" title="Subir foto del portero">' + avatarPortero(state.filtro.portero) + '<input type="file" accept="image/*" id="in-foto-portero" hidden></label>' +
+      '<div><h2 class="portero-nombre">' + esc(state.filtro.portero) + '</h2><p class="nota">' + esc((CFG.EQUIPOS || [])[0] || '') + ' · toca la foto para cambiarla</p></div></div>'
+    : '';
+  app.innerHTML = '<div class="vista"><div class="vista-cab"><h1>Informe</h1><div class="cab-acciones">' +
+    (state.goles.length ? '<a class="btn primary" href="#/informe-pdf">PDF</a>' : '') + '<a class="btn" href="#/exportar">Exportar…</a></div></div>' +
+    (state.goles.length ? filtros + cabPortero + barra : '') + cuerpo + '</div>';
+  cabeceraPortero(app, state.filtro.portero);
 
   $$('select[name^="f-"]', app).forEach(function (s) {
     s.addEventListener('change', function () { state.filtro[s.name.replace('f-', '')] = s.value; pintar(); });
@@ -1742,7 +1802,8 @@ function elegirArchivoExcel() {
 function exportarJSON() {
   var extra = window.FIN && window.FIN.datosCopia ? window.FIN.datosCopia() : {};
   var datos = { version: 2, exportado: new Date().toISOString(), goles: state.goles,
-                finalizaciones: extra.finalizaciones || [], jugadores: extra.jugadores || [], equipos: extra.equipos || [] };
+                finalizaciones: extra.finalizaciones || [], jugadores: extra.jugadores || [], equipos: extra.equipos || [],
+                fotosPorteros: state.fotosPorteros };
   descargar(new Blob([JSON.stringify(datos, null, 1)], { type: 'application/json' }),
             'copia-goles-' + hoyISO() + '.json');
 }
@@ -1762,6 +1823,11 @@ function importarJSON(archivo) {
       g.videoId = '';   /* los vídeos no viajan en la copia */
       return almacen.guardar(g);
     })).then(function () {
+      if (datos.fotosPorteros && typeof datos.fotosPorteros === 'object') {
+        Object.keys(datos.fotosPorteros).forEach(function (k) { state.fotosPorteros[k] = datos.fotosPorteros[k]; });
+        return almacen.ponAjuste('fotosPorteros', state.fotosPorteros);
+      }
+    }).then(function () {
       return window.FIN && window.FIN.restaurarCopia ? window.FIN.restaurarCopia(datos) : null;
     }).then(function () { return almacen.todos(); }).then(function (gs) {
       state.goles = gs;
@@ -1770,6 +1836,83 @@ function importarJSON(archivo) {
     });
   };
   lector.readAsText(archivo);
+}
+
+/* ============================== Vista: informe en PDF ==============================
+   Una página limpia para «Imprimir → Guardar como PDF». Usa los mismos
+   filtros (portero, rival) que la pestaña Informe. */
+
+function vistaInformePDF(app) {
+  app.onclick = null;
+  var gs = golesFiltrados().slice().sort(function (a, b) { return (a.fecha || '').localeCompare(b.fecha || '') || (a.minuto || 0) - (b.minuto || 0); });
+  var total = gs.length, nPartidos = partidos(gs);
+  var portero = state.filtro.portero;
+  var equipo = (CFG.EQUIPOS || [])[0] || '';
+  var fechas = gs.map(function (g) { return g.fecha; }).filter(Boolean).sort();
+  var valorados = gs.filter(function (g) { return g.evitabilidad; });
+  var evitables = gs.filter(function (g) { return g.evitabilidad === 'Evitable'; }).length;
+  var dentro = gs.filter(function (g) { return g.area === 'Dentro del Area'; }).length;
+  var abp = gs.filter(function (g) { return g.tipo === 'Acción a balón parado'; }).length;
+  var cEvit = contar(gs, function (g) { return g.evitabilidad || 'Sin valorar'; });
+  var itemsEvit = ['Evitable', 'Parcialmente evitable', 'Imparable', 'Sin valorar'].map(function (k) { return { k: k, n: cEvit[k] || 0 }; }).filter(function (x) { return x.n; });
+  var cResp = contar(gs.filter(function (g) { return g.responsabilidad; }), function (g) { return g.responsabilidad; });
+  var COLOR_RESP = { 'Portero': '#B3261E', 'Defensa': '#B97A00', 'Colectiva': '#1B5FA3', 'Mérito del rival': '#1E7D55' };
+  var cPeriodo = contar(gs, function (g) { return g.periodo; });
+  var ps = agruparPartidos(gs);
+  var cats = ps.map(function (p) { return (p.jornada ? 'J' + p.jornada + ' ' : '') + (p.rival || fechaCorta(p.fecha)); });
+  var series = [
+    { nombre: 'Evitable', color: COLOR_EVIT['Evitable'], valores: ps.map(function (p) { return p.ev; }) },
+    { nombre: 'Parcialmente evitable', color: COLOR_EVIT['Parcialmente evitable'], valores: ps.map(function (p) { return p.parc; }) },
+    { nombre: 'Imparable', color: COLOR_EVIT['Imparable'], valores: ps.map(function (p) { return p.imp; }) },
+    { nombre: 'Sin valorar', color: COLOR_EVIT['Sin valorar'], valores: ps.map(function (p) { return p.sin; }) }
+  ].filter(function (sr) { return sr.valores.some(function (v) { return v; }); });
+  var conTrabajo = gs.filter(function (g) { return g.correctivo; });
+  var conObs = gs.filter(function (g) { return g.observaciones; });
+
+  function lista(items) {
+    return '<ul class="pdf-lista">' + items.map(function (g, i) {
+      return '<li><strong>' + esc(fechaCorta(g.fecha)) + (g.rival ? ' · ' + esc(g.rival) : '') + (g.minuto != null && g.minuto !== '' ? ' · ' + esc(g.minuto) + "'" : '') + '</strong> ' + esc(i === 0 ? '' : '') + esc(items === conTrabajo ? g.correctivo : g.observaciones) + '</li>';
+    }).join('') + '</ul>';
+  }
+
+  app.innerHTML =
+    '<div class="pdf-controles no-print">' +
+      '<a class="btn" href="#/informe">← Volver al informe</a>' +
+      '<button type="button" class="btn primary grande" id="btn-imprimir">Guardar como PDF</button>' +
+      '<p class="nota">Se abre el diálogo de impresión del navegador: elige «Guardar como PDF». Si quieres otra foto o el escudo, se cambian en Informe y en Finalización → equipo.</p>' +
+    '</div>' +
+    '<div class="pdf">' +
+      '<header class="pdf-cab">' +
+        '<div class="pdf-foto">' + (portero ? avatarPortero(portero) : '<span class="avatar avatar-ini">' + esc(iniciales(equipo)) + '</span>') + '</div>' +
+        '<div class="pdf-tit"><div class="pdf-sobre">Informe de goles encajados</div>' +
+          '<h1>' + esc(portero || 'Todos los porteros') + '</h1>' +
+          '<div class="pdf-sub">' + esc(equipo) + (state.filtro.rival ? ' · vs ' + esc(state.filtro.rival) : '') +
+            (fechas.length ? ' · ' + fechaCorta(fechas[0]) + ' – ' + fechaCorta(fechas[fechas.length - 1]) : '') + ' · ' + nPartidos + ' partido' + (nPartidos === 1 ? '' : 's') + '</div></div>' +
+        '<div class="pdf-escudo">' + escudoPropio() + '</div>' +
+      '</header>' +
+      (!total ? '<p class="vacio">No hay goles con este filtro.</p>' :
+      '<section class="pdf-kpis">' +
+        kpi(total, 'Goles encajados') + kpi(nPartidos ? Math.round(10 * total / nPartidos) / 10 : '—', 'Por partido') +
+        kpi(valorados.length ? pct(evitables, valorados.length) + '%' : '—', 'Evitables', valorados.length ? evitables + ' de ' + valorados.length + ' valorados' : '') +
+        kpi(pct(dentro, total) + '%', 'Dentro del área') + kpi(pct(abp, total) + '%', 'Balón parado') +
+      '</section>' +
+      '<section class="pdf-fila"><div class="pdf-bloque"><h3>Zona de disparo</h3>' + svgCampo(null, { cuenta: contar(gs, function (g) { return g.zonaDisparo; }) }) + '</div>' +
+        '<div class="pdf-bloque"><h3>Zona de portería</h3>' + svgPorteria(null, { cuenta: contar(gs, function (g) { return g.zonaPorteria; }) }) + '</div></section>' +
+      '<section class="pdf-fila"><div class="pdf-bloque"><h3>Evitabilidad</h3>' + svgDonut(itemsEvit, COLOR_EVIT) + '</div>' +
+        '<div class="pdf-bloque"><h3>Responsabilidad</h3>' + (Object.keys(cResp).length ? svgDonut(ordenado(cResp, G.RESPONSABILIDAD), COLOR_RESP) : '<p class="nota">Sin valorar.</p>') + '</div></section>' +
+      '<section class="pdf-fila"><div class="pdf-bloque">' + barras('Tipo de jugada', contar(gs, function (g) { return g.tipo; }), T.TIPO, total) + '</div>' +
+        '<div class="pdf-bloque">' + barras('Golpeo', contar(gs, function (g) { return g.golpeo; }), T.GOLPEO, total) + '</div></section>' +
+      '<section class="pdf-fila"><div class="pdf-bloque">' + (barras('Errores del portero', contar(gs.filter(function (g) { return g.errores && g.errores.length; }), function (g) { return g.errores; }), G.ERROR, total) || '<h3>Errores del portero</h3><p class="nota">Sin datos.</p>') + '</div>' +
+        '<div class="pdf-bloque">' + (barras('Aciertos del portero', contar(gs.filter(function (g) { return g.aciertos && g.aciertos.length; }), function (g) { return g.aciertos; }), G.ACIERTO, total) || '<h3>Aciertos del portero</h3><p class="nota">Sin datos.</p>') + '</div></section>' +
+      '<section class="pdf-bloque pdf-ancho"><h3>Goles por periodo</h3>' + svgColumnas(T.PERIODO, [{ nombre: 'Goles', color: COLOR_SERIE, valores: T.PERIODO.map(function (p) { return cPeriodo[p] || 0; }) }], { alto: 200 }) + '</section>' +
+      (ps.length > 1 ? '<section class="pdf-bloque pdf-ancho"><h3>Evolución por partido</h3>' + svgColumnas(cats, series, { alto: 240 }) + '</section>' : '') +
+      '<section class="pdf-bloque pdf-ancho"><h3>Trabajo correctivo propuesto</h3>' + (conTrabajo.length ? lista(conTrabajo) : '<p class="nota">—</p>') + '</section>' +
+      (conObs.length ? '<section class="pdf-bloque pdf-ancho"><h3>Observaciones</h3>' + lista(conObs) + '</section>' : '') +
+      '<section class="pdf-bloque pdf-ancho"><h3>Conclusiones</h3><div class="pdf-lineas"><span></span><span></span><span></span><span></span></div></section>' +
+      '<footer class="pdf-pie">' + esc(CFG.MARCA || '') + ' · generado el ' + new Date().toLocaleDateString('es-ES') + '</footer>') +
+    '</div>';
+
+  $('#btn-imprimir', app).addEventListener('click', function () { window.print(); });
 }
 
 /* ============================== Vista: exportar ============================== */
