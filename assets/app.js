@@ -113,7 +113,7 @@ function aviso(texto, tipo) {
    IndexedDB con tres almacenes: goles (los datos), videos (los clips) y
    ajustes (preferencias y el enlace al archivo Excel). */
 
-var DB_NOMBRE = 'porteros', DB_VERSION = 1, _db = null;
+var DB_NOMBRE = 'porteros', DB_VERSION = 2, _db = null;
 
 function db() {
   if (_db) return Promise.resolve(_db);
@@ -124,6 +124,10 @@ function db() {
       if (!d.objectStoreNames.contains('goles'))   d.createObjectStore('goles', { keyPath: 'id' });
       if (!d.objectStoreNames.contains('videos'))  d.createObjectStore('videos', { keyPath: 'id' });
       if (!d.objectStoreNames.contains('ajustes')) d.createObjectStore('ajustes', { keyPath: 'clave' });
+      /* v2: finalización de delanteros */
+      if (!d.objectStoreNames.contains('finalizaciones')) d.createObjectStore('finalizaciones', { keyPath: 'id' });
+      if (!d.objectStoreNames.contains('jugadores')) d.createObjectStore('jugadores', { keyPath: 'id' });
+      if (!d.objectStoreNames.contains('equipos')) d.createObjectStore('equipos', { keyPath: 'nombre' });
     };
     pet.onsuccess = function () { _db = pet.result; res(_db); };
     pet.onerror = function () { rej(pet.error); };
@@ -152,7 +156,11 @@ var almacen = {
   quitaVideo: function (id)  { return tx('videos', 'readwrite', function (s) { return s.delete(id); }); },
   ajuste:   function (c)     { return tx('ajustes', 'readonly', function (s) { return s.get(c); })
                                       .then(function (r) { return r ? r.valor : null; }); },
-  ponAjuste: function (c, v) { return tx('ajustes', 'readwrite', function (s) { return s.put({ clave: c, valor: v }); }); }
+  ponAjuste: function (c, v) { return tx('ajustes', 'readwrite', function (s) { return s.put({ clave: c, valor: v }); }); },
+  /* Genéricos, para los almacenes de finalización */
+  todosDe:   function (st)     { return tx(st, 'readonly',  function (s) { return s.getAll(); }); },
+  guardarEn: function (st, o)  { return tx(st, 'readwrite', function (s) { return s.put(o); }); },
+  borrarDe:  function (st, id) { return tx(st, 'readwrite', function (s) { return s.delete(id); }); }
 };
 
 /* ============================== Estado ============================== */
@@ -165,6 +173,7 @@ var state = {
   porterosExtra: [],
   informe: { tab: 'resumen', orden: 'fecha', desc: true, buscar: '', zc: '', zp: '' },
   volverA: '#/',  /* a dónde vuelve el formulario al guardar o cancelar */
+  modo: (function () { try { return localStorage.getItem('porteros:modo') || 'goles'; } catch (e) { return 'goles'; } })(),
   excelHandle: null,
   vista: 'registro'
 };
@@ -235,30 +244,64 @@ function partidos(goles) {
 function ruta() {
   var h = (location.hash || '#/').replace(/^#/, '');
   var partes = h.split('/').filter(Boolean);
-  return { vista: partes[0] || 'registro', id: partes[1] || '' };
+  var dec = function (x) { try { return decodeURIComponent(x || ''); } catch (e) { return x || ''; } };
+  return { vista: partes[0] || 'registro', id: dec(partes[1]), extra: dec(partes[2]) };
 }
 
 function navegar(h) { location.hash = h; }
+
+var TABBAR_GOLES = [
+  ['#/', 'registro', 'Registro', '<path d="M4 5.5h16v13H4z"/><path d="M4 10h16M9 5.5v13"/>'],
+  ['#/nuevo', 'nuevo', 'Nuevo gol', '<circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/>'],
+  ['#/informe', 'informe', 'Informe', '<path d="M4 19.5V10M10 19.5V5M16 19.5v-6M21 19.5h-18"/>'],
+  ['#/exportar', 'exportar', 'Exportar', '<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5"/><path d="M4 16.5v3h16v-3"/>']
+];
+
+function htmlTabbar(pestanas, activa) {
+  return pestanas.map(function (t) {
+    return '<a href="' + t[0] + '" data-tab="' + t[1] + '" class="' + (activa === t[1] ? 'activa' : '') + '">' +
+      '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + t[3] + '</svg>' +
+      '<span>' + t[2] + '</span>' + (t[1] === 'registro' ? '<span class="pill" id="pill-total" hidden>0</span>' : '') + '</a>';
+  }).join('');
+}
+
+function pintarModo() {
+  $$('.modos a').forEach(function (a) { a.classList.toggle('sel', a.getAttribute('data-modo') === state.modo); });
+}
 
 function pintar() {
   var r = ruta();
   state.vista = r.vista;
   var app = $('#app');
+  var esFin = r.vista.indexOf('fin') === 0;
+  if (esFin) state.modo = 'fin';
+  else if (r.vista !== 'exportar' && r.vista !== 'excel') state.modo = 'goles';
+  try { localStorage.setItem('porteros:modo', state.modo); } catch (e) {}
+  pintarModo();
+
+  if (esFin && window.FIN) {
+    window.FIN.pintar(app, r);
+    $('.tabbar').innerHTML = htmlTabbar(window.FIN.pestanas(), window.FIN.pestanaActiva(r));
+    actualizarBotonExcel();
+    window.scrollTo(0, 0);
+    return;
+  }
+  if (r.vista === 'exportar' && state.modo === 'fin' && window.FIN) {
+    vistaExportar(app);
+    $('.tabbar').innerHTML = htmlTabbar(window.FIN.pestanas(), 'exportar');
+    actualizarBotonExcel();
+    window.scrollTo(0, 0);
+    return;
+  }
+
   if (r.vista === 'nuevo')       vistaFormulario(app, null);
   else if (r.vista === 'editar') vistaFormulario(app, r.id);
   else if (r.vista === 'informe' || r.vista === 'panel') vistaInforme(app, r.id);
   else if (r.vista === 'exportar' || r.vista === 'excel') vistaExportar(app);
   else                           vistaRegistro(app);
 
-  $$('.tabbar a').forEach(function (a) {
-    var t = a.getAttribute('data-tab');
-    var activa = (r.vista === 'registro' && t === 'registro') ||
-                 (t === r.vista) ||
-                 (r.vista === 'editar' && t === 'nuevo') ||
-                 (r.vista === 'panel' && t === 'informe') ||
-                 (r.vista === 'excel' && t === 'exportar');
-    a.classList.toggle('activa', !!activa);
-  });
+  var activa = r.vista === 'editar' ? 'nuevo' : r.vista === 'panel' ? 'informe' : r.vista === 'excel' ? 'exportar' : r.vista;
+  $('.tabbar').innerHTML = htmlTabbar(TABBAR_GOLES, activa);
   actualizarBotonExcel();
   var pill = $('#pill-total');
   if (pill) { pill.textContent = state.goles.length; pill.hidden = !state.goles.length; }
@@ -292,6 +335,8 @@ function arrancar() {
     return almacen.ajuste('porteros');
   }).then(function (ps) {
     state.porterosExtra = Array.isArray(ps) ? ps : [];
+    return window.FIN && window.FIN.cargar ? window.FIN.cargar() : null;
+  }).then(function () {
     pintar();
   }).catch(function (e) {
     aviso('No se ha podido abrir el almacén del navegador: ' + e, 'error');
@@ -379,25 +424,28 @@ function svgPorteria(sel, opts) {
   var max = 0;
   Object.keys(cuenta).forEach(function (k) { if (cuenta[k] > max) max = cuenta[k]; });
 
-  var zonas = Z.PORTERIA.map(function (z) {
+  var lista = opts.fuera ? Z.PORTERIA.concat(Z.FUERA) : Z.PORTERIA;
+  var zonas = lista.map(function (z) {
     var c = Z.centro(z.poligono), n = cuenta[z.n] || 0, esSel = String(sel) === String(z.n);
     var calor = (max && !esSel) ? ' style="fill-opacity:' + (0.12 + 0.75 * n / max) + '"' : '';
-    return '<polygon class="zona' + (esSel ? ' sel' : '') + (n ? ' calor' : '') + '" ' +
+    var esFuera = typeof z.n === 'string';
+    return '<polygon class="zona' + (esSel ? ' sel' : '') + (n ? ' calor' : '') + (esFuera ? ' fuera' : '') + '" ' +
            'data-zona="' + z.n + '" points="' + Z.puntos(z.poligono) + '"' + calor + '>' +
            '<title>' + z.n + ' · ' + esc(z.nombre) + (opts.cuenta ? ' · ' + n : '') + '</title></polygon>' +
-           '<text class="num" x="' + c[0] + '" y="' + (c[1] + (opts.cuenta ? -8 : 10)) + '">' + z.n + '</text>' +
+           '<text class="num' + (esFuera ? ' num-fuera' : '') + '" x="' + c[0] + '" y="' + (c[1] + (opts.cuenta ? -8 : 10)) + '">' + (esFuera ? 'FUERA' : z.n) + '</text>' +
            (opts.cuenta ? '<text class="val" x="' + c[0] + '" y="' + (c[1] + 24) + '">' + n + '</text>' : '');
   }).join('');
 
-  return '<svg class="porteria" viewBox="-14 -14 ' + (M.pAncho + 28) + ' ' + (M.pAlto + 20) + '" role="img" aria-label="Portería">' +
+  var vb = opts.fuera ? '-200 -120 ' + (M.pAncho + 400) + ' ' + (M.pAlto + 126) : '-14 -14 ' + (M.pAncho + 28) + ' ' + (M.pAlto + 20);
+  return '<svg class="porteria' + (opts.fuera ? ' con-fuera' : '') + '" viewBox="' + vb + '" role="img" aria-label="Portería">' +
          '<rect class="red" x="0" y="0" width="' + M.pAncho + '" height="' + M.pAlto + '"/>' + zonas +
          '<path class="palos" d="M -6 ' + M.pAlto + ' V -6 H ' + (M.pAncho + 6) + ' V ' + M.pAlto + '"/>' +
-         '<line class="suelo" x1="-14" y1="' + M.pAlto + '" x2="' + (M.pAncho + 14) + '" y2="' + M.pAlto + '"/>' +
+         '<line class="suelo" x1="' + (opts.fuera ? -200 : -14) + '" y1="' + M.pAlto + '" x2="' + (M.pAncho + (opts.fuera ? 200 : 14)) + '" y2="' + M.pAlto + '"/>' +
          '</svg>';
 }
 
 function etiquetaZona(tipo, n) {
-  var z = tipo === 'campo' ? Z.campo(n) : Z.porteria(n);
+  var z = tipo === 'campo' ? Z.campo(n) : Z.porteriaOFuera(n);
   return z ? z.n + ' · ' + z.nombre : '—';
 }
 
@@ -772,8 +820,10 @@ function marcarChip(form, campo, valor) {
 /* --- Reproductor --- */
 
 var _urlVideo = null;
+var _etqFoto = { remate: 'Remate', gol: 'Gol' };
 
-function montarVideo(form, g) {
+function montarVideo(form, g, opts) {
+  _etqFoto = (opts && opts.etiquetas) || { remate: 'Remate', gol: 'Gol' };
   var zona = $('#zona-video', form);
   var input = $('#in-video', form);
 
@@ -797,8 +847,8 @@ function montarVideo(form, g) {
         '<button type="button" data-paso="-1">◀ fotograma</button>' +
         '<button type="button" data-paso="1">fotograma ▶</button>' +
         '<span class="sep"></span>' +
-        '<button type="button" class="foto" data-foto="remate">📸 Remate</button>' +
-        '<button type="button" class="foto" data-foto="gol">📸 Gol</button>' +
+        '<button type="button" class="foto" data-foto="remate">📸 ' + esc(_etqFoto.remate) + '</button>' +
+        '<button type="button" class="foto" data-foto="gol">📸 ' + esc(_etqFoto.gol) + '</button>' +
       '</div>' +
       '<div class="fotos" id="fotos"></div>' +
       '<p class="nota">' + esc(nombre || '') + (tam ? ' · ' + megas(tam) + ' MB' : '') +
@@ -916,7 +966,7 @@ function pintarFotos(g) {
   var zona = $('#fotos');
   if (!zona) return;
   function tarjeta(cual, foto, t) {
-    var et = cual === 'remate' ? 'Remate' : 'Gol';
+    var et = cual === 'remate' ? _etqFoto.remate : _etqFoto.gol;
     if (!foto) return '<div class="foto-vacia">' + et + ': sin fotograma</div>';
     return '<figure class="foto-mini"><img src="' + foto + '" alt="' + et + '">' +
       '<figcaption>' + et + ' · ' + (t != null ? t.toFixed(2) + ' s' : '') +
@@ -924,6 +974,13 @@ function pintarFotos(g) {
       ' <button type="button" data-quitar="' + cual + '">quitar</button></figcaption></figure>';
   }
   zona.innerHTML = tarjeta('remate', g.fotoRemate, g.instanteRemate) + tarjeta('gol', g.fotoGol, g.instanteGol);
+}
+
+/* Guarda el vídeo pendiente (si lo hay) con el id del registro. */
+function persistirVideo(obj) {
+  if (!state.videoArchivo || CFG.GUARDAR_VIDEO === false) return Promise.resolve();
+  var f = state.videoArchivo;
+  return almacen.ponVideo(obj.id, f, f.name).then(function () { obj.videoId = obj.id; });
 }
 
 /* --- Guardar --- */
@@ -940,11 +997,7 @@ function guardarGol(g, accion) {
   if (g.minuto !== '' && g.minuto != null) g.minuto = parseInt(g.minuto, 10);
   delete g._mismoDia;
 
-  var guardarVideo = state.videoArchivo && CFG.GUARDAR_VIDEO !== false
-    ? almacen.ponVideo(g.id, state.videoArchivo, state.videoArchivo.name).then(function () { g.videoId = g.id; })
-    : Promise.resolve();
-
-  guardarVideo.then(function () { return almacen.guardar(g); }).then(function () {
+  persistirVideo(g).then(function () { return almacen.guardar(g); }).then(function () {
     var i = state.goles.findIndex(function (x) { return x.id === g.id; });
     if (i >= 0) state.goles[i] = g; else state.goles.push(g);
     state.videoArchivo = null;
@@ -1608,6 +1661,8 @@ function construirExcel() {
     informes.push(hojaInforme(('INFORME · ' + p).slice(0, 31), encajados.filter(function (g) { return g.portero === p; }), p));
   });
 
+  var hojasFin = (window.FIN && window.FIN.hojasExcel) ? window.FIN.hojasExcel() : [];
+
   return MiniXLSX.crear([
     { nombre: 'LISTA GOLES', filas: lista, congelar: 1, filtro: true, validaciones: validaciones,
       anchos: [7, 11, 16, 16, 18, 14, 9, 8, 11, 22, 30, 15, 11, 10, 14, 15, 14, 9, 18, 12, 30, 13,
@@ -1617,7 +1672,7 @@ function construirExcel() {
     { nombre: 'MAPAS', filas: mapas, cabecera: false, anchos: [22, 14, 14, 14, 14, 14] },
     { nombre: 'PARTIDOS', filas: hojaPartidos, congelar: 1, filtro: true, anchos: [11, 9, 20, 10, 11, 16, 16, 10, 14] },
     { nombre: 'TABLA MAESTRA', filas: maestra, cabecera: false, anchos: [12, 14, 10, 12, 22, 16, 11, 11, 15, 16, 16, 22, 18, 24, 20, 28, 26, 26, 26, 26, 32, 32, 18, 20] }
-  ]));
+  ], hojasFin));
 }
 
 function descargar(blob, nombre) {
@@ -1648,7 +1703,8 @@ function escribirHandle(h, blob) {
 /* Actualiza el Excel: si el usuario eligió un archivo, lo sobrescribe en
    el sitio; si no, lo descarga. */
 function exportarExcel(silencioso) {
-  if (!state.goles.length) { aviso('Aún no hay goles que exportar.', 'error'); return Promise.resolve(); }
+  var hayFin = window.FIN && window.FIN.cuenta && window.FIN.cuenta() > 0;
+  if (!state.goles.length && !hayFin) { aviso('Aún no hay nada que exportar.', 'error'); return Promise.resolve(); }
   var blob = construirExcel();
   var nombre = CFG.NOMBRE_EXCEL || 'goles-encajados.xlsx';
   if (state.excelHandle) {
@@ -1684,7 +1740,9 @@ function elegirArchivoExcel() {
 /* --- Copia de seguridad en JSON (sin vídeos) --- */
 
 function exportarJSON() {
-  var datos = { version: 1, exportado: new Date().toISOString(), goles: state.goles };
+  var extra = window.FIN && window.FIN.datosCopia ? window.FIN.datosCopia() : {};
+  var datos = { version: 2, exportado: new Date().toISOString(), goles: state.goles,
+                finalizaciones: extra.finalizaciones || [], jugadores: extra.jugadores || [], equipos: extra.equipos || [] };
   descargar(new Blob([JSON.stringify(datos, null, 1)], { type: 'application/json' }),
             'copia-goles-' + hoyISO() + '.json');
 }
@@ -1703,7 +1761,9 @@ function importarJSON(archivo) {
       if (existe) actualizados++; else nuevos++;
       g.videoId = '';   /* los vídeos no viajan en la copia */
       return almacen.guardar(g);
-    })).then(function () { return almacen.todos(); }).then(function (gs) {
+    })).then(function () {
+      return window.FIN && window.FIN.restaurarCopia ? window.FIN.restaurarCopia(datos) : null;
+    }).then(function () { return almacen.todos(); }).then(function (gs) {
       state.goles = gs;
       aviso('Importados ' + nuevos + ' goles nuevos y ' + actualizados + ' actualizados.', 'ok');
       pintar();
@@ -1777,6 +1837,19 @@ function vistaExportar(app) {
     if (e.target.files && e.target.files[0]) importarJSON(e.target.files[0]);
   });
 }
+
+/* ============================== API para otros módulos ============================== */
+
+window.APP = {
+  esc: esc, $: $, $$: $$, idNuevo: idNuevo, hoyISO: hoyISO, fechaCorta: fechaCorta, periodoDeMinuto: periodoDeMinuto,
+  megas: megas, aviso: aviso, almacen: almacen, state: state, navegar: navegar, pintar: function () { pintar(); },
+  chips: chips, campoTexto: campoTexto, campoSelect: campoSelect, marcarChip: marcarChip,
+  svgCampo: svgCampo, svgPorteria: svgPorteria, etiquetaZona: etiquetaZona,
+  montarVideo: montarVideo, persistirVideo: persistirVideo, pintarFotos: pintarFotos,
+  contar: contar, ordenado: ordenado, pct: pct, barras: barras, kpi: kpi, svgColumnas: svgColumnas, svgDonut: svgDonut,
+  norm: norm, rivales: rivales, vueltaDeJornada: vueltaDeJornada,
+  T: T, G: G, SUBTIPO: SUBTIPO, CFG: CFG, Z: Z, COLOR_SERIE: COLOR_SERIE, tarjetaGolHtml: tarjetaGol, claseEvit: claseEvit
+};
 
 /* ============================== Go ============================== */
 

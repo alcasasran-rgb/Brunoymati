@@ -92,9 +92,16 @@ PORTERIA.forEach(function (z) {
   z.palo = (z.col === 0 || z.col === 3) ? 'Junto al palo' : 'Centrada';
 });
 
+/* Remates fuera: tres franjas alrededor del marco (para Finalización). */
+var FUERA = [
+  { n: 'FI', corto: 'Fuera izq.',  nombre: 'Fuera · por la izquierda', poligono: rect(-190, -110, -22, P_ALTO) },
+  { n: 'FD', corto: 'Fuera dcha.', nombre: 'Fuera · por la derecha',   poligono: rect(P_ANCHO + 22, -110, P_ANCHO + 190, P_ALTO) },
+  { n: 'FA', corto: 'Fuera alto',  nombre: 'Fuera · por encima',       poligono: rect(-22, -110, P_ANCHO + 22, -22) }
+];
+
 function buscar(lista, n) {
-  n = parseInt(n, 10);
-  for (var i = 0; i < lista.length; i++) if (lista[i].n === n) return lista[i];
+  var num = parseInt(n, 10);
+  for (var i = 0; i < lista.length; i++) if (lista[i].n === num || lista[i].n === n) return lista[i];
   return null;
 }
 
@@ -117,6 +124,8 @@ return {
              graIzq: GRA_IZQ, graDer: GRA_DER, graFondo: GRA_FONDO },
   campo: function (n) { return buscar(CAMPO, n); },
   porteria: function (n) { return buscar(PORTERIA, n); },
+  FUERA: FUERA,
+  porteriaOFuera: function (n) { return buscar(PORTERIA, n) || buscar(FUERA, n); },
   puntos: puntos,
   centro: centro
 };
