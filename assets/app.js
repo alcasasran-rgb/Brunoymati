@@ -503,16 +503,30 @@ function iniciales(nombre) {
   return String(nombre || '?').split(/\s+/).slice(0, 2).map(function (p) { return p.charAt(0).toUpperCase(); }).join('');
 }
 
+/* 'Sporting de Gijón' → 'sporting-de-gijon', para nombres de archivo. */
+function slug(s) {
+  return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+/* Imagen con reserva: si el archivo no existe, se muestran las iniciales. */
+function imagenConReserva(src, clase, alt, ini) {
+  return '<span class="img-wrap"><img class="' + clase + '" src="' + esc(src) + '" alt="' + esc(alt) + '" ' +
+    'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">' +
+    '<span class="' + clase + ' ' + clase + '-ini" style="display:none">' + esc(ini) + '</span></span>';
+}
+
 function avatarPortero(nombre) {
   var f = state.fotosPorteros[nombre];
-  return f ? '<img class="avatar" src="' + f + '" alt="' + esc(nombre) + '">'
-           : '<span class="avatar avatar-ini">' + esc(iniciales(nombre)) + '</span>';
+  if (f) return '<img class="avatar" src="' + f + '" alt="' + esc(nombre) + '">';
+  var eq = (CFG.EQUIPOS || [])[0] || '';
+  return imagenConReserva('assets/fotos/' + slug(eq) + '/' + slug(nombre) + '.jpg', 'avatar', nombre, iniciales(nombre));
 }
 
 function escudoPropio() {
   var eq = (CFG.EQUIPOS || [])[0] || '';
   var e = window.FIN && window.FIN._D && window.FIN._D.equipos[eq];
-  return e && e.escudo ? '<img class="escudo" src="' + e.escudo + '" alt="' + esc(eq) + '">' : '';
+  if (e && e.escudo) return '<img class="escudo" src="' + e.escudo + '" alt="' + esc(eq) + '">';
+  return eq ? imagenConReserva('assets/escudos/' + slug(eq) + '.png', 'escudo', eq, iniciales(eq)) : '';
 }
 
 /* Cabecera con la foto del portero (clic para subirla). */
@@ -2020,7 +2034,7 @@ window.APP = {
   montarVideo: montarVideo, persistirVideo: persistirVideo, pintarFotos: pintarFotos,
   contar: contar, ordenado: ordenado, pct: pct, barras: barras, kpi: kpi, svgColumnas: svgColumnas, svgDonut: svgDonut,
   norm: norm, rivales: rivales, vueltaDeJornada: vueltaDeJornada, filtrarUltimas: filtrarUltimas, chipsUltimas: chipsUltimas,
-  avatarPortero: avatarPortero, iniciales: iniciales,
+  avatarPortero: avatarPortero, iniciales: iniciales, slug: slug, imagenConReserva: imagenConReserva,
   T: T, G: G, SUBTIPO: SUBTIPO, CFG: CFG, Z: Z, COLOR_SERIE: COLOR_SERIE, tarjetaGolHtml: tarjetaGol, claseEvit: claseEvit
 };
 

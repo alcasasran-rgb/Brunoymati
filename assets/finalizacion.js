@@ -111,17 +111,17 @@ function leerImagen(file, maxPx) {
 
 /* ------------------------------ Componentes ------------------------------ */
 
-function escudoHtml(equipo, tam) {
+/* Escudo: el subido desde la app; si no, assets/escudos/<equipo>.png;
+   si tampoco, las iniciales. */
+function escudoHtml(equipo) {
   var e = D.equipos[equipo];
-  return e && e.escudo
-    ? '<img class="escudo" src="' + e.escudo + '" alt="' + esc(equipo) + '">'
-    : '<span class="escudo escudo-ini">' + esc(iniciales(equipo)) + '</span>';
+  if (e && e.escudo) return '<img class="escudo" src="' + e.escudo + '" alt="' + esc(equipo) + '">';
+  return A.imagenConReserva('assets/escudos/' + A.slug(equipo) + '.png', 'escudo', equipo, iniciales(equipo));
 }
 
 function avatarHtml(j) {
-  return j.foto
-    ? '<img class="avatar" src="' + j.foto + '" alt="' + esc(j.nombre) + '">'
-    : '<span class="avatar avatar-ini">' + esc(iniciales(j.nombre)) + '</span>';
+  if (j.foto) return '<img class="avatar" src="' + j.foto + '" alt="' + esc(j.nombre) + '">';
+  return A.imagenConReserva('assets/fotos/' + A.slug(j.equipo) + '/' + A.slug(j.nombre) + '.jpg', 'avatar', j.nombre, iniciales(j.nombre));
 }
 
 function tarjetaRemate(r) {
@@ -557,8 +557,7 @@ function vistaPDFRival(app, equipo) {
 
 function escudoPropioFin() {
   var eq = (CFG.EQUIPOS || [])[0] || '';
-  var e = D.equipos[eq];
-  return e && e.escudo ? '<img class="escudo" src="' + e.escudo + '" alt="' + esc(eq) + '">' : '';
+  return eq ? escudoHtml(eq) : '';
 }
 
 /* ------------------------------ Excel y copia ------------------------------ */

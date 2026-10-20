@@ -351,3 +351,9 @@ svg.porteria .zona.fuera.sel+text.num-fuera{fill:#fff}
 .pdf-jugador .pdf-fila{margin-bottom:0}
 .pdf-jugador svg.campo,.pdf-jugador svg.porteria{max-width:360px}
 @media print{ .pdf .sub-tit{break-after:avoid;page-break-after:avoid} .pdf-jugador{break-inside:avoid} }
+
+.img-wrap{display:inline-flex;flex:0 0 auto}
+.img-wrap .escudo,.img-wrap .avatar{flex:0 0 auto}
+.equipo-cab .img-wrap .escudo,.equipo-cab .img-wrap .avatar{width:72px;height:72px}
+.pdf-foto .img-wrap .avatar{width:88px;height:88px;font-size:30px}
+.pdf-foto .img-wrap .escudo{width:88px;height:88px;font-size:30px}
