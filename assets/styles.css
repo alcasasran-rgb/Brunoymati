@@ -341,3 +341,13 @@ svg.porteria .zona.fuera.sel+text.num-fuera{fill:#fff}
   svg.campo{background:#3F8F4E !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
+
+.chips-ultimas{margin:-4px 0 14px}
+.pdf-controles .chips-ultimas{margin:0;flex-basis:100%}
+.pdf-jugador{margin-bottom:12px}
+.pdf-jug-cab{display:flex;gap:12px;align-items:flex-start;margin-bottom:8px}
+.pdf-jug-cab .avatar{width:64px;height:64px;flex:0 0 auto}
+.pdf-jug-cab h3{margin-bottom:2px}
+.pdf-jugador .pdf-fila{margin-bottom:0}
+.pdf-jugador svg.campo,.pdf-jugador svg.porteria{max-width:360px}
+@media print{ .pdf .sub-tit{break-after:avoid;page-break-after:avoid} .pdf-jugador{break-inside:avoid} }

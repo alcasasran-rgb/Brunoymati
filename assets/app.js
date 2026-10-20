@@ -169,7 +169,7 @@ var state = {
   goles: [],
   borrador: null,      /* el gol que se está editando */
   videoArchivo: null,  /* File pendiente de guardar */
-  filtro: { portero: '', rival: '', equipo: '' },
+  filtro: { portero: '', rival: '', equipo: '', ultimas: 0 },
   porterosExtra: [],
   informe: { tab: 'resumen', orden: 'fecha', desc: true, buscar: '', zc: '', zp: '' },
   volverA: '#/',  /* a dónde vuelve el formulario al guardar o cancelar */
@@ -179,8 +179,34 @@ var state = {
   vista: 'registro'
 };
 
+/* Se queda con los registros de las últimas n jornadas (o, si no hay
+   jornadas anotadas, de los últimos n partidos por fecha). 0 = todo. */
+function filtrarUltimas(lista, n) {
+  n = parseInt(n, 10);
+  if (!n) return lista;
+  var jornadas = [];
+  lista.forEach(function (g) { var j = parseInt(g.jornada, 10); if (isFinite(j) && jornadas.indexOf(j) < 0) jornadas.push(j); });
+  if (jornadas.length) {
+    jornadas.sort(function (a, b) { return b - a; });
+    var ok = jornadas.slice(0, n);
+    return lista.filter(function (g) { return ok.indexOf(parseInt(g.jornada, 10)) >= 0; });
+  }
+  var fechas = [];
+  lista.forEach(function (g) { if (g.fecha && fechas.indexOf(g.fecha) < 0) fechas.push(g.fecha); });
+  fechas.sort().reverse();
+  var okF = fechas.slice(0, n);
+  return lista.filter(function (g) { return okF.indexOf(g.fecha) >= 0; });
+}
+
+var ULTIMAS = [[0, 'Toda la temporada'], [5, 'Últimas 5 j.'], [10, 'Últimas 10 j.'], [15, 'Últimas 15 j.']];
+function chipsUltimas(valor) {
+  return '<div class="chips chips-ultimas">' + ULTIMAS.map(function (u) {
+    return '<button type="button" class="chip' + (String(valor || 0) === String(u[0]) ? ' sel' : '') + '" data-ultimas="' + u[0] + '">' + u[1] + '</button>';
+  }).join('') + '</div>';
+}
+
 function golesFiltrados() {
-  return state.goles.filter(function (g) {
+  return filtrarUltimas(state.goles, state.filtro.ultimas).filter(function (g) {
     if (state.filtro.equipo && g.equipo !== state.filtro.equipo) return false;
     if (state.filtro.portero && g.portero !== state.filtro.portero) return false;
     if (state.filtro.rival && g.rival !== state.filtro.rival) return false;
@@ -1206,7 +1232,7 @@ function vistaInforme(app, sub) {
   var filtros = '<div class="filtros">' +
       (ps.length > 1 ? campoSelect('f-portero', 'Portero', ps, state.filtro.portero, 'Todos los porteros') : '') +
       (rs.length > 1 ? campoSelect('f-rival', 'Rival', rs, state.filtro.rival, 'Todos los rivales') : '') +
-    '</div>';
+    '</div>' + chipsUltimas(state.filtro.ultimas);
 
   var subtabs = [['resumen', 'Resumen'], ['goles', 'Goles'], ['partidos', 'Partidos'], ['mapas', 'Mapas'], ['evolucion', 'Evolución']];
   var barra = '<div class="subtabs">' + subtabs.map(function (t) {
@@ -1247,6 +1273,8 @@ function vistaInforme(app, sub) {
   /* Un solo manejador por render: #app persiste entre vistas y los
      addEventListener se irían acumulando. */
   app.onclick = function (e) {
+    var u = e.target.closest('[data-ultimas]');
+    if (u) { state.filtro.ultimas = parseInt(u.getAttribute('data-ultimas'), 10) || 0; pintar(); return; }
     if (e.target.closest('a[href^="#/editar/"]')) { state.volverA = location.hash || '#/informe'; return; }
     var zonaCampo = e.target.closest('#mapa-campo [data-zona]');
     if (zonaCampo) { var n1 = zonaCampo.getAttribute('data-zona'); state.informe.zc = state.informe.zc === n1 ? '' : n1; pintar(); return; }
@@ -1887,7 +1915,8 @@ function vistaInformePDF(app) {
         '<div class="pdf-tit"><div class="pdf-sobre">Informe de goles encajados</div>' +
           '<h1>' + esc(portero || 'Todos los porteros') + '</h1>' +
           '<div class="pdf-sub">' + esc(equipo) + (state.filtro.rival ? ' · vs ' + esc(state.filtro.rival) : '') +
-            (fechas.length ? ' · ' + fechaCorta(fechas[0]) + ' – ' + fechaCorta(fechas[fechas.length - 1]) : '') + ' · ' + nPartidos + ' partido' + (nPartidos === 1 ? '' : 's') + '</div></div>' +
+            (fechas.length ? ' · ' + fechaCorta(fechas[0]) + ' – ' + fechaCorta(fechas[fechas.length - 1]) : '') + ' · ' + nPartidos + ' partido' + (nPartidos === 1 ? '' : 's') +
+            (state.filtro.ultimas ? ' · últimas ' + state.filtro.ultimas + ' jornadas' : '') + '</div></div>' +
         '<div class="pdf-escudo">' + escudoPropio() + '</div>' +
       '</header>' +
       (!total ? '<p class="vacio">No hay goles con este filtro.</p>' :
@@ -1990,7 +2019,8 @@ window.APP = {
   svgCampo: svgCampo, svgPorteria: svgPorteria, etiquetaZona: etiquetaZona,
   montarVideo: montarVideo, persistirVideo: persistirVideo, pintarFotos: pintarFotos,
   contar: contar, ordenado: ordenado, pct: pct, barras: barras, kpi: kpi, svgColumnas: svgColumnas, svgDonut: svgDonut,
-  norm: norm, rivales: rivales, vueltaDeJornada: vueltaDeJornada,
+  norm: norm, rivales: rivales, vueltaDeJornada: vueltaDeJornada, filtrarUltimas: filtrarUltimas, chipsUltimas: chipsUltimas,
+  avatarPortero: avatarPortero, iniciales: iniciales,
   T: T, G: G, SUBTIPO: SUBTIPO, CFG: CFG, Z: Z, COLOR_SERIE: COLOR_SERIE, tarjetaGolHtml: tarjetaGol, claseEvit: claseEvit
 };
 

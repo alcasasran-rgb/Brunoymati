@@ -17,7 +17,7 @@ var D = {
   remates: [],
   jugadores: {},   /* id → { id, equipo, nombre, pos, dorsal, seguido, foto } (lo que el usuario cambia) */
   equipos: {},     /* nombre → { nombre, escudo } */
-  filtro: { equipo: '', jugador: '' },
+  filtro: { equipo: '', jugador: '', ultimas: 0 },
   borrador: null,
   volverA: '#/fin'
 };
@@ -190,7 +190,8 @@ function vistaEquipo(app, equipo, modoGestion) {
     : '';
 
   app.innerHTML = '<div class="vista">' +
-    '<div class="vista-cab"><a class="btn" href="#/fin">← Equipos</a><a class="btn primary" href="#/fin-nuevo/' + encodeURIComponent(equipo) + '">+ Nuevo remate</a></div>' +
+    '<div class="vista-cab"><a class="btn" href="#/fin">← Equipos</a><div class="cab-acciones">' + (rs.length ? '<a class="btn" href="#/fin-pdf/' + encodeURIComponent(equipo) + '">PDF</a>' : '') +
+      '<a class="btn primary" href="#/fin-nuevo/' + encodeURIComponent(equipo) + '">+ Nuevo remate</a></div></div>' +
     '<div class="equipo-cab"><label class="escudo-sel" title="Subir escudo">' + escudoHtml(equipo) + '<input type="file" accept="image/*" id="in-escudo" hidden></label>' +
       '<div><h1>' + esc(equipo) + '</h1><p class="nota">' + st.n + ' remates · ' + st.goles + ' goles' + (st.n ? ' · ' + st.pctPuerta + '% a puerta' : '') + ' · <a href="#/fin-equipo/' + encodeURIComponent(equipo) + '/gestion">' + (modoGestion ? 'cerrar plantilla' : 'gestionar jugadores') + '</a></p></div></div>' +
     gestion +
@@ -435,7 +436,7 @@ function guardarRemate(g, accion) {
 
 function vistaInforme(app) {
   var f = D.filtro;
-  var rs = D.remates.filter(function (r) { return (!f.equipo || r.equipo === f.equipo) && (!f.jugador || r.jugadorId === f.jugador); });
+  var rs = A.filtrarUltimas(D.remates, f.ultimas).filter(function (r) { return (!f.equipo || r.equipo === f.equipo) && (!f.jugador || r.jugadorId === f.jugador); });
   var st = estadisticas(rs);
   var eqs = equipos().filter(function (e) { return D.remates.some(function (r) { return r.equipo === e; }); });
   var jugs = f.equipo ? plantilla(f.equipo).filter(function (j) { return D.remates.some(function (r) { return r.jugadorId === j.id; }); }) : [];
@@ -459,9 +460,12 @@ function vistaInforme(app) {
       '</div>' +
       '<h2 class="sub-tit">Remates</h2>' + rs.slice().sort(function (a, b) { return (b.fecha || '').localeCompare(a.fecha || ''); }).map(tarjetaRemate).join('');
 
-  app.innerHTML = '<div class="vista"><div class="vista-cab"><h1>Informe · Finalización</h1><a class="btn" href="#/exportar">Exportar…</a></div>' +
+  app.innerHTML = '<div class="vista"><div class="vista-cab"><h1>Informe · Finalización</h1><div class="cab-acciones">' +
+    (f.equipo ? '<a class="btn primary" href="#/fin-pdf/' + encodeURIComponent(f.equipo) + '">PDF del rival</a>' : '') +
+    '<a class="btn" href="#/exportar">Exportar…</a></div></div>' +
     (D.remates.length ? '<div class="filtros">' + A.campoSelect('f-equipo', 'Equipo', eqs, f.equipo, 'Todos los equipos') +
-      (jugs.length ? '<label class="campo"><span>Jugador</span><select name="f-jugador"><option value="">Todos</option>' + jugs.map(function (j) { return '<option value="' + esc(j.id) + '"' + (j.id === f.jugador ? ' selected' : '') + '>' + esc(j.nombre) + '</option>'; }).join('') + '</select></label>' : '') + '</div>' : '') +
+      (jugs.length ? '<label class="campo"><span>Jugador</span><select name="f-jugador"><option value="">Todos</option>' + jugs.map(function (j) { return '<option value="' + esc(j.id) + '"' + (j.id === f.jugador ? ' selected' : '') + '>' + esc(j.nombre) + '</option>'; }).join('') + '</select></label>' : '') + '</div>' +
+      A.chipsUltimas(f.ultimas) : '') +
     cuerpo + '</div>';
 
   $$('select[name^="f-"]', app).forEach(function (s) {
@@ -470,7 +474,91 @@ function vistaInforme(app) {
       A.pintar();
     });
   });
-  app.onclick = function (e) { if (e.target.closest('a[href^="#/fin-editar/"]')) D.volverA = location.hash; };
+  app.onclick = function (e) {
+    var u = e.target.closest('[data-ultimas]');
+    if (u) { f.ultimas = parseInt(u.getAttribute('data-ultimas'), 10) || 0; A.pintar(); return; }
+    if (e.target.closest('a[href^="#/fin-editar/"]')) D.volverA = location.hash;
+  };
+}
+
+/* ------------------------------ Vista: ficha PDF del rival ------------------------------
+   Para preparar el partido: los rematadores del rival y sus tendencias. */
+
+function tendencias(rs) {
+  var out = [];
+  var tc = A.ordenado(A.contar(rs, function (r) { return r.zonaDisparo; }))[0];
+  var tp = A.ordenado(A.contar(rs, function (r) { return r.zonaPorteria; }))[0];
+  var tg = A.ordenado(A.contar(rs.filter(function (r) { return r.golpeo; }), function (r) { return r.golpeo; }))[0];
+  var tt = A.ordenado(A.contar(rs.filter(function (r) { return r.tipo; }), function (r) { return r.tipo; }))[0];
+  if (tc) out.push('Remata sobre todo desde <strong>' + esc(A.etiquetaZona('campo', tc.k)) + '</strong> (' + A.pct(tc.n, rs.length) + '%)');
+  if (tp) out.push('Finaliza más por <strong>' + esc(A.etiquetaZona('porteria', tp.k)) + '</strong> (' + A.pct(tp.n, rs.length) + '%)');
+  if (tg) out.push('Golpeo dominante: <strong>' + esc(tg.k) + '</strong> (' + A.pct(tg.n, rs.length) + '%)');
+  if (tt) out.push('Jugada más frecuente: <strong>' + esc(tt.k) + '</strong>');
+  return out;
+}
+
+function vistaPDFRival(app, equipo) {
+  app.onclick = null;
+  var f = D.filtro;
+  var rs = A.filtrarUltimas(D.remates, f.ultimas).filter(function (r) { return r.equipo === equipo; });
+  var st = estadisticas(rs);
+  var fechas = rs.map(function (r) { return r.fecha; }).filter(Boolean).sort();
+  var porJug = {};
+  rs.forEach(function (r) { (porJug[r.jugadorId] = porJug[r.jugadorId] || []).push(r); });
+  var jugs = Object.keys(porJug).map(function (id) { return { j: jugador(id) || { id: id, nombre: id, equipo: equipo }, rs: porJug[id] }; })
+    .sort(function (a, b) { return b.rs.length - a.rs.length; });
+  var notas = rs.filter(function (r) { return r.notas; });
+
+  var fichas = jugs.map(function (x) {
+    var s = estadisticas(x.rs);
+    return '<section class="pdf-bloque pdf-ancho pdf-jugador">' +
+      '<div class="pdf-jug-cab">' + avatarHtml(x.j) + '<div><h3>' + esc(x.j.nombre) + '</h3><p class="nota">' + esc(x.j.pos || '') + (x.j.dorsal ? ' · dorsal ' + esc(x.j.dorsal) : '') +
+        ' · ' + s.n + ' remate' + (s.n === 1 ? '' : 's') + ' · ' + s.goles + ' gol' + (s.goles === 1 ? '' : 'es') + ' · ' + s.pctPuerta + '% a puerta</p>' +
+        '<ul class="pdf-lista">' + tendencias(x.rs).map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul></div></div>' +
+      '<div class="pdf-fila"><div>' + A.svgCampo(null, { cuenta: A.contar(x.rs, function (r) { return r.zonaDisparo; }) }) + '</div>' +
+        '<div>' + A.svgPorteria(null, { cuenta: A.contar(x.rs, function (r) { return r.zonaPorteria; }), fuera: true }) + '</div></div>' +
+      '</section>';
+  }).join('');
+
+  app.innerHTML =
+    '<div class="pdf-controles no-print"><a class="btn" href="#/fin-equipo/' + encodeURIComponent(equipo) + '">← Volver</a>' +
+      '<button type="button" class="btn primary grande" id="btn-imprimir">Guardar como PDF</button>' +
+      A.chipsUltimas(f.ultimas) +
+      '<p class="nota">Se abre el diálogo de impresión del navegador: elige «Guardar como PDF».</p></div>' +
+    '<div class="pdf">' +
+      '<header class="pdf-cab"><div class="pdf-foto">' + escudoHtml(equipo) + '</div>' +
+        '<div class="pdf-tit"><div class="pdf-sobre">Ficha de finalización del rival</div><h1>' + esc(equipo) + '</h1>' +
+          '<div class="pdf-sub">' + (fechas.length ? A.fechaCorta(fechas[0]) + ' – ' + A.fechaCorta(fechas[fechas.length - 1]) + ' · ' : '') +
+          st.n + ' remates registrados' + (f.ultimas ? ' · últimas ' + f.ultimas + ' jornadas' : ' · toda la temporada') + '</div></div>' +
+        '<div class="pdf-escudo">' + escudoPropioFin() + '</div></header>' +
+      (!st.n ? '<p class="vacio">No hay remates de este equipo en el periodo elegido.</p>' :
+        '<section class="pdf-kpis"><div class="kpi"><div class="kpi-v">' + st.n + '</div><div class="kpi-et">Remates</div></div>' +
+          '<div class="kpi"><div class="kpi-v">' + st.goles + '</div><div class="kpi-et">Goles</div></div>' +
+          '<div class="kpi"><div class="kpi-v">' + st.pctPuerta + '%</div><div class="kpi-et">A puerta</div></div>' +
+          '<div class="kpi"><div class="kpi-v">' + st.pctGol + '%</div><div class="kpi-et">Gol por remate</div></div>' +
+          '<div class="kpi"><div class="kpi-v">' + jugs.length + '</div><div class="kpi-et">Rematadores</div></div></section>' +
+        '<section class="pdf-fila"><div class="pdf-bloque"><h3>Desde dónde remata el equipo</h3>' + A.svgCampo(null, { cuenta: A.contar(rs, function (r) { return r.zonaDisparo; }) }) + '</div>' +
+          '<div class="pdf-bloque"><h3>Por dónde finaliza</h3>' + A.svgPorteria(null, { cuenta: A.contar(rs, function (r) { return r.zonaPorteria; }), fuera: true }) + '</div></section>' +
+        '<section class="pdf-fila"><div class="pdf-bloque">' + A.barras('Resultado', A.contar(rs, function (r) { return r.resultado; }), RESULTADOS, st.n) + '</div>' +
+          '<div class="pdf-bloque">' + (A.barras('Tipo de jugada', A.contar(rs.filter(function (r) { return r.tipo; }), function (r) { return r.tipo; }), T.TIPO, st.n) || '<h3>Tipo de jugada</h3><p class="nota">Sin datos.</p>') + '</div></section>' +
+        '<h2 class="sub-tit">Rematadores</h2>' + fichas +
+        (notas.length ? '<section class="pdf-bloque pdf-ancho"><h3>Notas</h3><ul class="pdf-lista">' + notas.map(function (r) {
+          var j = jugador(r.jugadorId); return '<li><strong>' + esc(j ? j.nombre : '') + (r.fecha ? ' · ' + esc(A.fechaCorta(r.fecha)) : '') + '</strong> ' + esc(r.notas) + '</li>'; }).join('') + '</ul></section>' : '') +
+        '<section class="pdf-bloque pdf-ancho"><h3>Plan para el portero</h3><div class="pdf-lineas"><span></span><span></span><span></span><span></span></div></section>' +
+        '<footer class="pdf-pie">' + esc(CFG.MARCA || '') + ' · generado el ' + new Date().toLocaleDateString('es-ES') + '</footer>') +
+    '</div>';
+
+  $('#btn-imprimir', app).addEventListener('click', function () { window.print(); });
+  app.onclick = function (e) {
+    var u = e.target.closest('[data-ultimas]');
+    if (u) { f.ultimas = parseInt(u.getAttribute('data-ultimas'), 10) || 0; A.pintar(); }
+  };
+}
+
+function escudoPropioFin() {
+  var eq = (CFG.EQUIPOS || [])[0] || '';
+  var e = D.equipos[eq];
+  return e && e.escudo ? '<img class="escudo" src="' + e.escudo + '" alt="' + esc(eq) + '">' : '';
 }
 
 /* ------------------------------ Excel y copia ------------------------------ */
@@ -533,6 +621,7 @@ function pestanas() {
 function pestanaActiva(r) {
   if (r.vista === 'fin-equipo' || r.vista === 'fin-jugador') return 'fin';
   if (r.vista === 'fin-editar') return 'fin-nuevo';
+  if (r.vista === 'fin-pdf') return 'fin-informe';
   return r.vista;
 }
 
@@ -543,7 +632,9 @@ function pintar(app, r) {
   else if (r.vista === 'fin-nuevo') vistaRemate(app, null, r.id, r.extra && r.extra !== 'otro' ? r.extra : (r.extra === 'otro' ? (D.borrador && D.borrador.jugadorId) : ''));
   else if (r.vista === 'fin-editar') vistaRemate(app, r.id);
   else if (r.vista === 'fin-informe') vistaInforme(app);
+  else if (r.vista === 'fin-pdf') vistaPDFRival(app, r.id);
   else vistaEquipos(app);
+  document.body.classList.toggle('imprimiendo', r.vista === 'fin-pdf');
 }
 
 return { cargar: cargar, pintar: pintar, pestanas: pestanas, pestanaActiva: pestanaActiva,
