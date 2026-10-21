@@ -510,9 +510,12 @@ function slug(s) {
 
 /* Imagen con reserva: si el archivo no existe, se muestran las iniciales. */
 function imagenConReserva(src, clase, alt, ini) {
+  /* Jugadores y porteros sin foto: silueta negra. Equipos sin escudo: iniciales. */
+  var reserva = clase === 'avatar'
+    ? '<span class="avatar avatar-sil" style="display:none" title="' + esc(alt) + '"></span>'
+    : '<span class="' + clase + ' ' + clase + '-ini" style="display:none">' + esc(ini) + '</span>';
   return '<span class="img-wrap"><img class="' + clase + '" src="' + esc(src) + '" alt="' + esc(alt) + '" ' +
-    'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">' +
-    '<span class="' + clase + ' ' + clase + '-ini" style="display:none">' + esc(ini) + '</span></span>';
+    'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">' + reserva + '</span>';
 }
 
 function avatarPortero(nombre) {
@@ -1925,7 +1928,7 @@ function vistaInformePDF(app) {
     '</div>' +
     '<div class="pdf">' +
       '<header class="pdf-cab">' +
-        '<div class="pdf-foto">' + (portero ? avatarPortero(portero) : '<span class="avatar avatar-ini">' + esc(iniciales(equipo)) + '</span>') + '</div>' +
+        '<div class="pdf-foto">' + (portero ? avatarPortero(portero) : escudoPropio()) + '</div>' +
         '<div class="pdf-tit"><div class="pdf-sobre">Informe de goles encajados</div>' +
           '<h1>' + esc(portero || 'Todos los porteros') + '</h1>' +
           '<div class="pdf-sub">' + esc(equipo) + (state.filtro.rival ? ' · vs ' + esc(state.filtro.rival) : '') +
