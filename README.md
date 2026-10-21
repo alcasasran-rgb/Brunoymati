@@ -42,7 +42,7 @@ Se genera entero cada vez desde los goles guardados en la app:
 | `RESUMEN` | Totales y tablas por tipo, subtipo, periodo, golpeo, marcador, área, banda, zona de portería, zona de disparo, evitabilidad, responsabilidad, errores, portero y rival |
 | `MAPAS` | Por portero: rejilla de portería 2×4 y rejilla de campo 4×5 con conteos |
 | `PARTIDOS` | Goles encajados, evitables y a balón parado por partido |
-| `TABLA MAESTRA` | Las listas de valores y la definición de las 28 zonas |
+| `TABLA MAESTRA` | Las listas de valores y la definición de las 31 zonas |
 
 **En Chrome o Edge de ordenador** → pestaña Excel → *Enlazar un archivo…* →
 eliges dónde guardarlo una vez y a partir de ahí la app sobrescribe ese archivo
@@ -66,8 +66,9 @@ Numeración de tus dibujos. Izquierda y derecha son siempre las del dibujo.
 **Campo propio** (portería arriba): 1 área pequeña centro · 2 frontal del área ·
 3/4 área pequeña izq./dcha. · 5/6 semi izq./dcha. del área · 7/8 laterales del
 área · 9/10 bandas a la altura del área · 11/12 bandas franja media · 13/14
-interiores franja media · 15/16 bandas franja lejana · 17/18 interiores franja
-lejana · 19 centro franja media · 20 centro franja lejana.
+interiores franja media **alta** · 21/22 interiores franja media **baja** ·
+19 centro franja media alta · 23 centro franja media baja · 15/16 bandas franja
+lejana · 17/18 interiores franja lejana · 20 centro franja lejana.
 Dentro del área = 1-8. Impares = izquierda, pares = derecha.
 
 **Portería** (vista frontal desde el campo): 1/2 alta centro izq./dcha. ·

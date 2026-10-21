@@ -18,6 +18,7 @@ var PORT_IZQ = 303.4, PORT_DER = 376.6;          /* palos */
 var PEQ_IZQ = 248.4, PEQ_DER = 431.6, PEQ_FONDO = 55;    /* área pequeña */
 var GRA_IZQ = 139.4, GRA_DER = 540.6, GRA_FONDO = 165;   /* área grande */
 var MEDIA = 345;                                  /* corte entre franja media y lejana */
+var MEDIA_ALTA = 255;                             /* corte que parte la franja media (zonas 13, 19 y 14) */
 
 function rect(x1, y1, x2, y2) {
   return [[x1, y1], [x2, y1], [x2, y2], [x1, y2]];
@@ -53,10 +54,10 @@ var CAMPO = [
     poligono: rect(0, GRA_FONDO, GRA_IZQ, MEDIA), dentroArea: false, banda: 'Izquierda' },
   { n: 12, corto: 'Banda dcha. media',      nombre: 'Banda derecha · franja media',
     poligono: rect(GRA_DER, GRA_FONDO, ANCHO, MEDIA), dentroArea: false, banda: 'Derecha' },
-  { n: 13, corto: 'Interior izq. media',    nombre: 'Interior izquierdo · franja media',
-    poligono: rect(GRA_IZQ, GRA_FONDO, PORT_IZQ, MEDIA), dentroArea: false, banda: 'Izquierda' },
-  { n: 14, corto: 'Interior dcho. media',   nombre: 'Interior derecho · franja media',
-    poligono: rect(PORT_DER, GRA_FONDO, GRA_DER, MEDIA), dentroArea: false, banda: 'Derecha' },
+  { n: 13, corto: 'Interior izq. media alta', nombre: 'Interior izquierdo · franja media alta',
+    poligono: rect(GRA_IZQ, GRA_FONDO, PORT_IZQ, MEDIA_ALTA), dentroArea: false, banda: 'Izquierda' },
+  { n: 14, corto: 'Interior dcho. media alta', nombre: 'Interior derecho · franja media alta',
+    poligono: rect(PORT_DER, GRA_FONDO, GRA_DER, MEDIA_ALTA), dentroArea: false, banda: 'Derecha' },
   { n: 15, corto: 'Banda izq. lejana',      nombre: 'Banda izquierda · franja lejana',
     poligono: rect(0, MEDIA, GRA_IZQ, FONDO), dentroArea: false, banda: 'Izquierda' },
   { n: 16, corto: 'Banda dcha. lejana',     nombre: 'Banda derecha · franja lejana',
@@ -65,10 +66,17 @@ var CAMPO = [
     poligono: rect(GRA_IZQ, MEDIA, PORT_IZQ, FONDO), dentroArea: false, banda: 'Izquierda' },
   { n: 18, corto: 'Interior dcho. lejano',  nombre: 'Interior derecho · franja lejana',
     poligono: rect(PORT_DER, MEDIA, GRA_DER, FONDO), dentroArea: false, banda: 'Derecha' },
-  { n: 19, corto: 'Centro media',           nombre: 'Centro · franja media',
-    poligono: rect(PORT_IZQ, GRA_FONDO, PORT_DER, MEDIA), dentroArea: false, banda: 'Centro' },
+  { n: 19, corto: 'Centro media alta',      nombre: 'Centro · franja media alta',
+    poligono: rect(PORT_IZQ, GRA_FONDO, PORT_DER, MEDIA_ALTA), dentroArea: false, banda: 'Centro' },
   { n: 20, corto: 'Centro lejano',          nombre: 'Centro · franja lejana',
-    poligono: rect(PORT_IZQ, MEDIA, PORT_DER, FONDO), dentroArea: false, banda: 'Centro' }
+    poligono: rect(PORT_IZQ, MEDIA, PORT_DER, FONDO), dentroArea: false, banda: 'Centro' },
+  /* Mitades inferiores de 13, 14 y 19 (misma lógica: impar izquierda, par derecha). */
+  { n: 21, corto: 'Interior izq. media baja', nombre: 'Interior izquierdo · franja media baja',
+    poligono: rect(GRA_IZQ, MEDIA_ALTA, PORT_IZQ, MEDIA), dentroArea: false, banda: 'Izquierda' },
+  { n: 22, corto: 'Interior dcho. media baja', nombre: 'Interior derecho · franja media baja',
+    poligono: rect(PORT_DER, MEDIA_ALTA, GRA_DER, MEDIA), dentroArea: false, banda: 'Derecha' },
+  { n: 23, corto: 'Centro media baja',      nombre: 'Centro · franja media baja',
+    poligono: rect(PORT_IZQ, MEDIA_ALTA, PORT_DER, MEDIA), dentroArea: false, banda: 'Centro' }
 ];
 
 /* Portería: 4 columnas x 2 alturas. 732 x 244 decímetros. */

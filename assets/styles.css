@@ -373,3 +373,9 @@ details summary{cursor:pointer;font-weight:600;font-size:11px;letter-spacing:.14
 .fila-check input{width:18px;height:18px;accent-color:#8AC3EE}
 .rojo{color:var(--rojo)}
 code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em;background:var(--bg3);padding:1px 5px;border-radius:4px}
+
+.pdf-tabla{min-width:0;font-size:11px}
+.pdf-tabla th,.pdf-tabla td{padding:5px 6px;white-space:normal}
+.pdf-tabla th{position:static;background:#fff;color:#0A0A0A;border-bottom:1px solid #0A0A0A;font-size:9px}
+.pdf-tabla td{border-bottom:1px solid #E4E4E0;color:#0A0A0A}
+.filtros .campo{min-width:160px;flex:1 1 160px}

@@ -169,7 +169,7 @@ var state = {
   goles: [],
   borrador: null,      /* el gol que se está editando */
   videoArchivo: null,  /* File pendiente de guardar */
-  filtro: { portero: '', rival: '', equipo: '', ultimas: 0 },
+  filtro: { portero: '', rival: '', equipo: '', ultimas: 0, jugada: '' },
   porterosExtra: [],
   informe: { tab: 'resumen', orden: 'fecha', desc: true, buscar: '', zc: '', zp: '' },
   volverA: '#/',  /* a dónde vuelve el formulario al guardar o cancelar */
@@ -205,8 +205,37 @@ function chipsUltimas(valor) {
   }).join('') + '</div>';
 }
 
+/* Filtro por jugada: 'TIPO:Contraataque' o 'SUB:PENALTY'. */
+function pasaJugada(g, f) {
+  if (!f) return true;
+  if (f.indexOf('TIPO:') === 0) return g.tipo === f.slice(5);
+  if (f.indexOf('SUB:') === 0) return g.subtipo === f.slice(4);
+  return true;
+}
+
+var OPCIONES_JUGADA = (function () {
+  var lista = [];
+  T.TIPO.forEach(function (t) {
+    lista.push({ v: 'TIPO:' + t, et: t });
+    if (t === 'Acción a balón parado') SUBTIPO[t].forEach(function (st) { lista.push({ v: 'SUB:' + st, et: '   · ' + st.charAt(0) + st.slice(1).toLowerCase() }); });
+  });
+  return lista;
+})();
+
+function etiquetaJugada(f) {
+  var o = OPCIONES_JUGADA.filter(function (x) { return x.v === f; })[0];
+  return o ? o.et.replace(/^\s*·\s*/, '') : '';
+}
+
+function selectJugada(valor) {
+  return '<label class="campo"><span>Jugada</span><select name="f-jugada"><option value="">Todas las jugadas</option>' +
+    OPCIONES_JUGADA.map(function (o) { return '<option value="' + esc(o.v) + '"' + (o.v === valor ? ' selected' : '') + '>' + esc(o.et) + '</option>'; }).join('') +
+    '</select></label>';
+}
+
 function golesFiltrados() {
   return filtrarUltimas(state.goles, state.filtro.ultimas).filter(function (g) {
+    if (!pasaJugada(g, state.filtro.jugada)) return false;
     if (state.filtro.equipo && g.equipo !== state.filtro.equipo) return false;
     if (state.filtro.portero && g.portero !== state.filtro.portero) return false;
     if (state.filtro.rival && g.rival !== state.filtro.rival) return false;
@@ -1265,6 +1294,7 @@ function vistaInforme(app, sub) {
   var filtros = '<div class="filtros">' +
       (ps.length > 1 ? campoSelect('f-portero', 'Portero', ps, state.filtro.portero, 'Todos los porteros') : '') +
       (rs.length > 1 ? campoSelect('f-rival', 'Rival', rs, state.filtro.rival, 'Todos los rivales') : '') +
+      selectJugada(state.filtro.jugada) +
     '</div>' + chipsUltimas(state.filtro.ultimas);
 
   var subtabs = [['resumen', 'Resumen'], ['goles', 'Goles'], ['partidos', 'Partidos'], ['mapas', 'Mapas'], ['evolucion', 'Evolución']];
@@ -1751,12 +1781,14 @@ function construirExcel() {
     mapas.push(['', 'Banda izq.', 'Interior izq.', 'Centro', 'Interior dcho.', 'Banda dcha.']);
     mapas.push(['Área pequeña', cc[7] || 0, cc[3] || 0, cc[1] || 0, cc[4] || 0, cc[8] || 0]);
     mapas.push(['Resto del área', cc[9] || 0, cc[5] || 0, cc[2] || 0, cc[6] || 0, cc[10] || 0]);
-    mapas.push(['Franja media', cc[11] || 0, cc[13] || 0, cc[19] || 0, cc[14] || 0, cc[12] || 0]);
+    mapas.push(['Franja media alta', cc[11] || 0, cc[13] || 0, cc[19] || 0, cc[14] || 0, cc[12] || 0]);
+    mapas.push(['Franja media baja', '(11)', cc[21] || 0, cc[23] || 0, cc[22] || 0, '(12)']);
     mapas.push(['Franja lejana', cc[15] || 0, cc[17] || 0, cc[20] || 0, cc[18] || 0, cc[16] || 0]);
     mapas.push(['Nº de zona (fila 1)', '7', '3', '1', '4', '8']);
     mapas.push(['Nº de zona (fila 2)', '9*', '5', '2', '6', '10*']);
     mapas.push(['Nº de zona (fila 3)', '11', '13', '19', '14', '12']);
-    mapas.push(['Nº de zona (fila 4)', '15', '17', '20', '18', '16']);
+    mapas.push(['Nº de zona (fila 4)', '(11)', '21', '23', '22', '(12)']);
+    mapas.push(['Nº de zona (fila 5)', '15', '17', '20', '18', '16']);
     mapas.push(['* 9 y 10 son las bandas a la altura del área: van fuera del área, aunque en la rejilla estén en la fila 2.']);
     mapas.push([]); mapas.push([]);
   });
@@ -1957,7 +1989,8 @@ function vistaInformePDF(app) {
           '<h1>' + esc(portero || 'Todos los porteros') + '</h1>' +
           '<div class="pdf-sub">' + esc(equipo) + (state.filtro.rival ? ' · vs ' + esc(state.filtro.rival) : '') +
             (fechas.length ? ' · ' + fechaCorta(fechas[0]) + ' – ' + fechaCorta(fechas[fechas.length - 1]) : '') + ' · ' + nPartidos + ' partido' + (nPartidos === 1 ? '' : 's') +
-            (state.filtro.ultimas ? ' · últimas ' + state.filtro.ultimas + ' jornadas' : '') + '</div></div>' +
+            (state.filtro.ultimas ? ' · últimas ' + state.filtro.ultimas + ' jornadas' : '') +
+            (state.filtro.jugada ? ' · ' + esc(etiquetaJugada(state.filtro.jugada)) : '') + '</div></div>' +
         '<div class="pdf-escudo">' + escudoPropio() + '</div>' +
       '</header>' +
       (!total ? '<p class="vacio">No hay goles con este filtro.</p>' :
@@ -1976,6 +2009,13 @@ function vistaInformePDF(app) {
         '<div class="pdf-bloque">' + (barras('Aciertos del portero', contar(gs.filter(function (g) { return g.aciertos && g.aciertos.length; }), function (g) { return g.aciertos; }), G.ACIERTO, total) || '<h3>Aciertos del portero</h3><p class="nota">Sin datos.</p>') + '</div></section>' +
       '<section class="pdf-bloque pdf-ancho"><h3>Goles por periodo</h3>' + svgColumnas(T.PERIODO, [{ nombre: 'Goles', color: COLOR_SERIE, valores: T.PERIODO.map(function (p) { return cPeriodo[p] || 0; }) }], { alto: 200 }) + '</section>' +
       (ps.length > 1 ? '<section class="pdf-bloque pdf-ancho"><h3>Evolución por partido</h3>' + svgColumnas(cats, series, { alto: 240 }) + '</section>' : '') +
+      '<section class="pdf-bloque pdf-ancho"><h3>Goles encajados (' + total + ')</h3><table class="tabla pdf-tabla"><thead><tr><th>Fecha</th><th>J</th><th>Rival</th><th>Min</th><th>Jugada</th><th>Disparo</th><th>Portería</th><th>Golpeo</th><th>Valoración</th></tr></thead><tbody>' +
+        gs.map(function (g) {
+          var zc = Z.campo(g.zonaDisparo), zp = Z.porteria(g.zonaPorteria);
+          return '<tr><td>' + esc(fechaCorta(g.fecha)) + '</td><td>' + esc(g.jornada || '') + '</td><td>' + esc(g.rival || '') + '</td><td>' + (g.minuto != null && g.minuto !== '' ? esc(g.minuto) + "'" : '') + '</td>' +
+            '<td>' + esc(g.tipo || '') + (g.subtipo ? ' · ' + esc(g.subtipo) : '') + '</td><td>' + (zc ? zc.n + ' · ' + esc(zc.corto) : '') + '</td><td>' + (zp ? zp.n + ' · ' + esc(zp.corto) : '') + '</td>' +
+            '<td>' + esc(g.golpeo || '') + '</td><td>' + esc(g.evitabilidad || '') + (g.responsabilidad ? ' · ' + esc(g.responsabilidad) : '') + '</td></tr>';
+        }).join('') + '</tbody></table></section>' +
       '<section class="pdf-bloque pdf-ancho"><h3>Trabajo correctivo propuesto</h3>' + (conTrabajo.length ? lista(conTrabajo) : '<p class="nota">—</p>') + '</section>' +
       (conObs.length ? '<section class="pdf-bloque pdf-ancho"><h3>Observaciones</h3>' + lista(conObs) + '</section>' : '') +
       '<section class="pdf-bloque pdf-ancho"><h3>Conclusiones</h3><div class="pdf-lineas"><span></span><span></span><span></span><span></span></div></section>' +
