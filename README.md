@@ -87,6 +87,13 @@ Si hay que mover una línea, se toca solo `assets/zonas.js`.
 - **Publicada con URL**: Chrome → *Instalar aplicación* (o *Añadir a pantalla de
   inicio* en el móvil) usa el icono del `manifest.webmanifest`.
 
+**Sin internet**: la primera vez que se abre la web con conexión, el navegador
+guarda una copia (`sw.js`). A partir de ahí la app instalada abre sin internet;
+los datos y clips siempre están en el propio ordenador. Al volver a tener
+conexión se actualiza sola a la última versión publicada. Solo necesitan
+internet: la copia en Google Drive y las fotos de jugadores que aún no se
+hayan visto.
+
 ## 5b. Penaltis
 
 Selector «Penaltis» arriba, entre Goles encajados y Finalización. Se registra **cada lanzamiento** en contra (gol,
