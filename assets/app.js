@@ -370,6 +370,8 @@ function arrancar() {
     state.fotosPorteros = f && typeof f === 'object' ? f : {};
     return window.FIN && window.FIN.cargar ? window.FIN.cargar() : null;
   }).then(function () {
+    return window.DRIVE && window.DRIVE.cargar ? window.DRIVE.cargar().catch(function () {}) : null;
+  }).then(function () {
     pintar();
   }).catch(function (e) {
     aviso('No se ha podido abrir el almacén del navegador: ' + e, 'error');
@@ -616,6 +618,7 @@ function tarjetaGol(g) {
         (g.responsabilidad ? '<span class="badge">' + esc(g.responsabilidad) + '</span>' : '') +
         (tieneVideo ? '<span class="badge video">🎬 clip</span>' : '') +
         (tieneLink ? '<a class="badge link" href="' + esc(g.link) + '" target="_blank" rel="noopener">🔗 enlace</a>' : '') +
+        (g.driveVideoId ? '<a class="badge link" href="https://drive.google.com/file/d/' + esc(g.driveVideoId) + '/view" target="_blank" rel="noopener">Drive</a>' : '') +
       '</div>' +
     '</div>' +
     ((g.fotoRemate || g.fotoGol) ? '<div class="gol-fotos">' +
@@ -1081,6 +1084,17 @@ function persistirVideo(obj) {
   return almacen.ponVideo(obj.id, f, f.name).then(function () { obj.videoId = obj.id; });
 }
 
+/* Copia en Google Drive tras guardar: primero el clip (si lo hay), luego
+   datos y Excel. Nunca bloquea el guardado local. */
+function respaldarEnDrive(reg, archivoClip) {
+  var D = window.DRIVE;
+  if (!D || D.estado() !== 'conectado') return;
+  var sube = archivoClip ? D.subirClip(reg, archivoClip).then(function (id) {
+    if (id) { reg.driveVideoId = id; return (reg.jugadorId ? almacen.guardarEn('finalizaciones', reg) : almacen.guardar(reg)).then(function () { if (state.vista === 'registro') pintar(); }); }
+  }).catch(function (e) { aviso('No se pudo subir el clip a Drive: ' + e.message, 'error'); }) : Promise.resolve();
+  sube.then(function () { return D.sincronizar('auto'); });
+}
+
 /* --- Guardar --- */
 
 function guardarGol(g, accion) {
@@ -1095,10 +1109,12 @@ function guardarGol(g, accion) {
   if (g.minuto !== '' && g.minuto != null) g.minuto = parseInt(g.minuto, 10);
   delete g._mismoDia;
 
+  var archivoClip = state.videoArchivo;
   persistirVideo(g).then(function () { return almacen.guardar(g); }).then(function () {
     var i = state.goles.findIndex(function (x) { return x.id === g.id; });
     if (i >= 0) state.goles[i] = g; else state.goles.push(g);
     state.videoArchivo = null;
+    respaldarEnDrive(g, archivoClip);
     if (state.goles.length % 10 === 0) {
       aviso('Gol guardado. Llevas ' + state.goles.length + ' goles: descarga una copia de seguridad en la pestaña Excel.', '');
     } else aviso('Gol guardado.' + (state.excelHandle ? ' Actualizando Excel…' : ''), 'ok');
@@ -1844,13 +1860,16 @@ function elegirArchivoExcel() {
 
 /* --- Copia de seguridad en JSON (sin vídeos) --- */
 
-function exportarJSON() {
+function copiaJSON() {
   var extra = window.FIN && window.FIN.datosCopia ? window.FIN.datosCopia() : {};
   var datos = { version: 2, exportado: new Date().toISOString(), goles: state.goles,
                 finalizaciones: extra.finalizaciones || [], jugadores: extra.jugadores || [], equipos: extra.equipos || [],
                 fotosPorteros: state.fotosPorteros };
-  descargar(new Blob([JSON.stringify(datos, null, 1)], { type: 'application/json' }),
-            'copia-goles-' + hoyISO() + '.json');
+  return JSON.stringify(datos, null, 1);
+}
+
+function exportarJSON() {
+  descargar(new Blob([copiaJSON()], { type: 'application/json' }), 'copia-goles-' + hoyISO() + '.json');
 }
 
 function importarJSON(archivo) {
@@ -1858,10 +1877,17 @@ function importarJSON(archivo) {
   lector.onload = function () {
     var datos;
     try { datos = JSON.parse(lector.result); } catch (e) { aviso('Ese archivo no es una copia válida.', 'error'); return; }
+    importarCopia(datos).catch(function (e) { aviso(e.message, 'error'); });
+  };
+  lector.readAsText(archivo);
+}
+
+/* Mezcla una copia (archivo o Drive) con lo que hay: por id, sin duplicar. */
+function importarCopia(datos) {
     var lista = datos && datos.goles;
-    if (!Array.isArray(lista)) { aviso('Ese archivo no es una copia válida.', 'error'); return; }
+    if (!Array.isArray(lista)) return Promise.reject(new Error('Eso no es una copia válida.'));
     var nuevos = 0, actualizados = 0;
-    Promise.all(lista.map(function (g) {
+    return Promise.all(lista.map(function (g) {
       if (!g || !g.id) return null;
       var existe = state.goles.some(function (x) { return x.id === g.id; });
       if (existe) actualizados++; else nuevos++;
@@ -1879,8 +1905,6 @@ function importarJSON(archivo) {
       aviso('Importados ' + nuevos + ' goles nuevos y ' + actualizados + ' actualizados.', 'ok');
       pintar();
     });
-  };
-  lector.readAsText(archivo);
 }
 
 /* ============================== Vista: informe en PDF ==============================
@@ -1969,6 +1993,7 @@ function vistaExportar(app) {
   var conHandle = !!state.excelHandle;
   app.innerHTML = '<div class="vista">' +
     '<div class="vista-cab"><h1>Exportar</h1><a class="btn" href="#/informe">← Informe</a></div>' +
+    (window.DRIVE ? window.DRIVE.htmlSeccion() : '') +
 
     '<section class="bloque">' +
       '<h2>Excel</h2>' +
@@ -1991,7 +2016,7 @@ function vistaExportar(app) {
 
     '<section class="bloque">' +
       '<h2>Copia de seguridad</h2>' +
-      '<p>Los datos viven <strong>solo en este navegador de este dispositivo</strong>; la web no tiene servidor. Para cambiar de dispositivo, pasar del archivo local a la versión con URL, o por si se borran los datos del navegador, guarda una copia (incluye los fotogramas, no los vídeos).</p>' +
+      '<p>Los datos viven en este navegador; con Google Drive conectado se copian solos. Esta copia manual sirve para cambiar de dispositivo sin Drive (incluye los fotogramas, no los vídeos).</p>' +
       '<p class="nota" id="estado-almacen"></p>' +
       '<div class="acciones">' +
         '<button type="button" class="btn" id="btn-json">Descargar copia (.json)</button>' +
@@ -2008,6 +2033,7 @@ function vistaExportar(app) {
     '</section>' +
   '</div>';
 
+  if (window.DRIVE) window.DRIVE.montar(app);
   $('#btn-excel', app).addEventListener('click', function () { exportarExcel(); });
   var enlazar = $('#btn-enlazar', app);
   if (enlazar) enlazar.addEventListener('click', elegirArchivoExcel);
@@ -2037,6 +2063,7 @@ window.APP = {
   montarVideo: montarVideo, persistirVideo: persistirVideo, pintarFotos: pintarFotos,
   contar: contar, ordenado: ordenado, pct: pct, barras: barras, kpi: kpi, svgColumnas: svgColumnas, svgDonut: svgDonut,
   norm: norm, rivales: rivales, vueltaDeJornada: vueltaDeJornada, filtrarUltimas: filtrarUltimas, chipsUltimas: chipsUltimas,
+  copiaJSON: copiaJSON, importarCopia: importarCopia, construirExcel: construirExcel, respaldarEnDrive: respaldarEnDrive,
   avatarPortero: avatarPortero, iniciales: iniciales, slug: slug, imagenConReserva: imagenConReserva,
   T: T, G: G, SUBTIPO: SUBTIPO, CFG: CFG, Z: Z, COLOR_SERIE: COLOR_SERIE, tarjetaGolHtml: tarjetaGol, claseEvit: claseEvit
 };

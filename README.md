@@ -86,7 +86,30 @@ Si hay que mover una línea, se toca solo `assets/zonas.js`.
 - **Publicada con URL**: Chrome → *Instalar aplicación* (o *Añadir a pantalla de
   inicio* en el móvil) usa el icono del `manifest.webmanifest`.
 
-## 6. Vídeos y copias
+## 6. Google Drive (copia automática)
+
+Con Drive conectado, cada vez que se guarda un gol o un remate la app sube a
+la carpeta «Goles encajados» de la cuenta de Google del usuario: la copia
+completa (`copia-goles.json`), el Excel y el clip de vídeo (`clips/`). En otro
+ordenador: Exportar → *Conectar con Google* → *Restaurar desde Drive*.
+
+Hace falta un ID de cliente OAuth, **una sola vez** (5 minutos, cuenta de Google):
+
+1. https://console.cloud.google.com → crear proyecto (p. ej. «Goles encajados»).
+2. *APIs y servicios → Biblioteca* → buscar **Google Drive API** → *Habilitar*.
+3. *APIs y servicios → Pantalla de consentimiento OAuth* → tipo **Externo** →
+   nombre de la app y tu correo → guardar. En *Público* pulsa **Publicar app**
+   (el permiso que usa la app, `drive.file`, no requiere verificación).
+4. *APIs y servicios → Credenciales → Crear credenciales → ID de cliente de
+   OAuth* → tipo **Aplicación web** → en *Orígenes de JavaScript autorizados*
+   añade `https://alcasasran-rgb.github.io` → *Crear*.
+5. Copia el **ID de cliente** (termina en `.apps.googleusercontent.com`) y
+   pégalo en `config.js`, en `GOOGLE_CLIENT_ID`.
+
+La app solo puede ver y tocar los archivos que ella misma crea en Drive
+(permiso `drive.file`); no accede al resto de la cuenta.
+
+## 7. Vídeos y copias
 
 - El clip se guarda **en el navegador del dispositivo** donde lo metes. No se
   sube a ningún sitio. Para compartirlo, usa el campo *enlace* (Drive, YouTube…).
@@ -94,7 +117,7 @@ Si hay que mover una línea, se toca solo `assets/zonas.js`.
 - Pestaña Excel → *Descargar copia (.json)* guarda todos los goles (sin vídeos)
   para cambiar de dispositivo o restaurar.
 
-## 7. Archivos
+## 8. Archivos
 
 ```
 index.html        la app
@@ -103,9 +126,11 @@ assets/app.js     lógica y vistas
 assets/zonas.js   geometría y nombres de las 20 + 8 zonas
 assets/xlsx-min.js generador de .xlsx sin librerías externas
 assets/styles.css diseño
+assets/finalizacion.js módulo Finalización de delanteros
+assets/drive.js    copia automática en Google Drive
 ```
 
-## 8. Decisiones tomadas
+## 9. Decisiones tomadas
 
 - **Mismos valores que tu `TABLA MAESTRA`** (tipos, subtipos, golpeo…) para que
   tus tablas dinámicas sigan funcionando si copias `LISTA GOLES` a tu archivo.

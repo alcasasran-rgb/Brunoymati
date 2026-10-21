@@ -421,12 +421,13 @@ function guardarRemate(g, accion) {
   if (!g.periodo) g.periodo = A.periodoDeMinuto(g.minuto);
   if (g.minuto !== '' && g.minuto != null) g.minuto = parseInt(g.minuto, 10);
 
+  var archivoClip = A.state.videoArchivo;
   A.persistirVideo(g).then(function () { return A.almacen.guardarEn('finalizaciones', g); }).then(function () {
     var i = D.remates.findIndex(function (x) { return x.id === g.id; });
     if (i >= 0) D.remates[i] = g; else D.remates.push(g);
     A.state.videoArchivo = null;
+    A.respaldarEnDrive(g, archivoClip);
     A.aviso('Remate guardado.', 'ok');
-    if (A.state.excelHandle) A.pintar && window.dispatchEvent(new CustomEvent('porteros:excel'));
     if (accion === 'otro') A.navegar('#/fin-nuevo/' + encodeURIComponent(g.equipo) + '/' + encodeURIComponent(g.jugadorId) + '/otro');
     else A.navegar('#/fin-jugador/' + encodeURIComponent(g.jugadorId));
   }).catch(function (e) { A.aviso('No se ha podido guardar: ' + (e && e.message || e), 'error'); });
