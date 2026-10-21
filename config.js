@@ -12,7 +12,7 @@ window.CONFIG = {
      También se pueden añadir desde la propia app (desplegable Portero →
      «+ Añadir portero…»). Lista de partida: porteros del Celta Fortuna
      en la temporada 2025/26 según BeSoccer; confirma los de esta temporada. */
-  PORTEROS: ['Coke Carrillo', 'Caio Barone', 'Quique Ribes', 'Marcos González'],
+  PORTEROS: ['Coke Carrillo', 'Caio Barone', 'Marcos González'],
 
   /* Equipos / categorías. Si solo trabajas con uno, deja uno. */
   EQUIPOS: ['Celta Fortuna'],
