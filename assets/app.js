@@ -312,7 +312,6 @@ function navegar(h) { location.hash = h; }
 var TABBAR_GOLES = [
   ['#/', 'registro', 'Registro', '<path d="M4 5.5h16v13H4z"/><path d="M4 10h16M9 5.5v13"/>'],
   ['#/nuevo', 'nuevo', 'Nuevo gol', '<circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/>'],
-  ['#/pen', 'pen', 'Penaltis', '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.5"/>'],
   ['#/informe', 'informe', 'Informe', '<path d="M4 19.5V10M10 19.5V5M16 19.5v-6M21 19.5h-18"/>'],
   ['#/exportar', 'exportar', 'Exportar', '<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5"/><path d="M4 16.5v3h16v-3"/>']
 ];
@@ -335,7 +334,8 @@ function pintar() {
   var app = $('#app');
   var esFin = r.vista.indexOf('fin') === 0, esPen = r.vista.indexOf('pen') === 0;
   if (esFin) state.modo = 'fin';
-  else if (r.vista !== 'exportar' && r.vista !== 'excel') state.modo = 'goles';   /* penaltis viven dentro de goles */
+  else if (esPen) state.modo = 'pen';
+  else if (r.vista !== 'exportar' && r.vista !== 'excel') state.modo = 'goles';
   try { localStorage.setItem('porteros:modo', state.modo); } catch (e) {}
   pintarModo();
   if (r.vista !== 'informe-pdf') document.body.classList.remove('imprimiendo');
@@ -349,14 +349,15 @@ function pintar() {
   }
   if (esPen && window.PEN) {
     window.PEN.pintar(app, r);
-    $('.tabbar').innerHTML = htmlTabbar(TABBAR_GOLES, 'pen');
+    $('.tabbar').innerHTML = htmlTabbar(window.PEN.pestanas(), window.PEN.pestanaActiva(r));
     actualizarBotonExcel();
     window.scrollTo(0, 0);
     return;
   }
-  if (r.vista === 'exportar' && state.modo === 'fin' && window.FIN) {
+  if (r.vista === 'exportar' && (state.modo === 'fin' || state.modo === 'pen')) {
+    var mod = state.modo === 'fin' ? window.FIN : window.PEN;
     vistaExportar(app);
-    $('.tabbar').innerHTML = htmlTabbar(window.FIN.pestanas(), 'exportar');
+    $('.tabbar').innerHTML = htmlTabbar(mod.pestanas(), 'exportar');
     actualizarBotonExcel();
     window.scrollTo(0, 0);
     return;
