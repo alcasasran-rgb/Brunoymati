@@ -89,7 +89,7 @@ Si hay que mover una línea, se toca solo `assets/zonas.js`.
 
 ## 5b. Penaltis
 
-Tercer selector arriba. Se registra **cada lanzamiento** en contra (gol,
+Pestaña «Penaltis» dentro de Goles encajados. Se registra **cada lanzamiento** en contra (gol,
 parada, fuera o palo): lanzador (lista del rival), pie, carrera, zona por la
 que va el balón (las 8 de portería o las tres franjas de fuera), altura, lado
 al que se lanza el portero y notas. El informe muestra paradas, goles, % de

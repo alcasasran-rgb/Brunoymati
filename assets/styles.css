@@ -380,5 +380,6 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em;back
 .pdf-tabla td{border-bottom:1px solid #E4E4E0;color:#0A0A0A}
 .filtros .campo{min-width:160px;flex:1 1 160px}
 
-.modos a{padding-left:4px;padding-right:4px;font-size:10px}
-@media (min-width:500px){ .modos a{font-size:11px} }
+
+.tabbar a span{font-size:8.5px}
+@media (min-width:400px){ .tabbar a span{font-size:9px} }

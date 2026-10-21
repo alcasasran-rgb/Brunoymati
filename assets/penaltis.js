@@ -126,7 +126,7 @@ function vistaLista(app) {
     if (e.target.closest('a[href^="#/pen-editar/"]')) D.volverA = location.hash || '#/pen';
   };
   var ps = filtrados(), st = estadisticas(ps);
-  app.innerHTML = '<div class="vista"><div class="vista-cab"><h1>Penaltis</h1><a class="btn primary" href="#/pen-nuevo">+ Nuevo penalti</a></div>' +
+  app.innerHTML = '<div class="vista"><div class="vista-cab"><h1>Penaltis</h1><div class="cab-acciones">' + (D.penaltis.length ? '<a class="btn" href="#/pen-informe">Informe</a>' : '') + '<a class="btn primary" href="#/pen-nuevo">+ Nuevo penalti</a></div></div>' +
     (D.penaltis.length ? filtrosHtml() : '') +
     (!D.penaltis.length ? '<div class="vacio"><h2>Sin penaltis todavía</h2><p>Registra cada lanzamiento en contra: gol, parada, fuera o palo, con el lado del portero y del balón.</p><a class="btn primary grande" href="#/pen-nuevo">+ Registrar el primero</a></div>' :
       '<div class="kpis">' + A.kpi(st.n, 'Lanzamientos') + A.kpi(st.paradas, 'Paradas', st.n ? st.pctParadas + '%' : '') + A.kpi(st.goles, 'Goles', st.n ? st.pctGol + '%' : '') +
@@ -285,7 +285,7 @@ function vistaInforme(app) {
     if (u) { D.filtro.ultimas = parseInt(u.getAttribute('data-ultimas'), 10) || 0; A.pintar(); }
   };
   var ps = filtrados();
-  app.innerHTML = '<div class="vista"><div class="vista-cab"><h1>Informe · Penaltis</h1><div class="cab-acciones">' + (ps.length ? '<a class="btn primary" href="#/pen-pdf">PDF</a>' : '') + '<a class="btn" href="#/exportar">Exportar…</a></div></div>' +
+  app.innerHTML = '<div class="vista"><div class="vista-cab"><h1>Informe · Penaltis</h1><div class="cab-acciones">' + (ps.length ? '<a class="btn primary" href="#/pen-pdf">PDF</a>' : '') + '<a class="btn" href="#/pen">← Penaltis</a></div></div>' +
     (D.penaltis.length ? filtrosHtml() : '') +
     (!ps.length ? '<p class="vacio">Sin penaltis con ese filtro.</p>' : cuerpoInforme(ps, false)) + '</div>';
   montarFiltros(app);
