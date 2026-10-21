@@ -87,6 +87,20 @@ Si hay que mover una línea, se toca solo `assets/zonas.js`.
 - **Publicada con URL**: Chrome → *Instalar aplicación* (o *Añadir a pantalla de
   inicio* en el móvil) usa el icono del `manifest.webmanifest`.
 
+## 5b. Penaltis
+
+Tercer selector arriba. Se registra **cada lanzamiento** en contra (gol,
+parada, fuera o palo): lanzador (lista del rival), pie, carrera, zona por la
+que va el balón (las 8 de portería o las tres franjas de fuera), altura, lado
+al que se lanza el portero y notas. El informe muestra paradas, goles, % de
+acierto de lado, mapa de lanzamientos, resultado y una tabla por lanzador; el
+PDF del informe sirve para preparar al portero antes de un partido.
+
+Un penalti que acaba en **gol** crea solo su gol en «Goles encajados»
+(subtipo PENALTY, zona de disparo 2) y lo mantiene sincronizado: si se cambia
+a parada o se borra, el gol desaparece. Por eso el desplegable de jugada del
+informe de goles no incluye «Penalti».
+
 ## 6. Google Drive (copia automática)
 
 Con Drive conectado, cada vez que se guarda un gol o un remate la app sube a
@@ -128,6 +142,7 @@ assets/zonas.js   geometría y nombres de las 20 + 8 zonas
 assets/xlsx-min.js generador de .xlsx sin librerías externas
 assets/styles.css diseño
 assets/finalizacion.js módulo Finalización de delanteros
+assets/penaltis.js     módulo Penaltis
 assets/drive.js    copia automática en Google Drive
 ```
 

@@ -379,3 +379,6 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em;back
 .pdf-tabla th{position:static;background:#fff;color:#0A0A0A;border-bottom:1px solid #0A0A0A;font-size:9px}
 .pdf-tabla td{border-bottom:1px solid #E4E4E0;color:#0A0A0A}
 .filtros .campo{min-width:160px;flex:1 1 160px}
+
+.modos a{padding-left:4px;padding-right:4px;font-size:10px}
+@media (min-width:500px){ .modos a{font-size:11px} }

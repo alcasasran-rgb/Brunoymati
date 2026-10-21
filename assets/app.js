@@ -113,7 +113,7 @@ function aviso(texto, tipo) {
    IndexedDB con tres almacenes: goles (los datos), videos (los clips) y
    ajustes (preferencias y el enlace al archivo Excel). */
 
-var DB_NOMBRE = 'porteros', DB_VERSION = 2, _db = null;
+var DB_NOMBRE = 'porteros', DB_VERSION = 3, _db = null;
 
 function db() {
   if (_db) return Promise.resolve(_db);
@@ -128,6 +128,8 @@ function db() {
       if (!d.objectStoreNames.contains('finalizaciones')) d.createObjectStore('finalizaciones', { keyPath: 'id' });
       if (!d.objectStoreNames.contains('jugadores')) d.createObjectStore('jugadores', { keyPath: 'id' });
       if (!d.objectStoreNames.contains('equipos')) d.createObjectStore('equipos', { keyPath: 'nombre' });
+      /* v3: penaltis */
+      if (!d.objectStoreNames.contains('penaltis')) d.createObjectStore('penaltis', { keyPath: 'id' });
     };
     pet.onsuccess = function () { _db = pet.result; res(_db); };
     pet.onerror = function () { rej(pet.error); };
@@ -217,7 +219,8 @@ var OPCIONES_JUGADA = (function () {
   var lista = [];
   T.TIPO.forEach(function (t) {
     lista.push({ v: 'TIPO:' + t, et: t });
-    if (t === 'Acción a balón parado') SUBTIPO[t].forEach(function (st) { lista.push({ v: 'SUB:' + st, et: '   · ' + st.charAt(0) + st.slice(1).toLowerCase() }); });
+    /* Los penaltis tienen su propio módulo: no se listan aquí. */
+    if (t === 'Acción a balón parado') SUBTIPO[t].filter(function (st) { return st !== 'PENALTY'; }).forEach(function (st) { lista.push({ v: 'SUB:' + st, et: '   · ' + st.charAt(0) + st.slice(1).toLowerCase() }); });
   });
   return lista;
 })();
@@ -329,8 +332,9 @@ function pintar() {
   var r = ruta();
   state.vista = r.vista;
   var app = $('#app');
-  var esFin = r.vista.indexOf('fin') === 0;
+  var esFin = r.vista.indexOf('fin') === 0, esPen = r.vista.indexOf('pen') === 0;
   if (esFin) state.modo = 'fin';
+  else if (esPen) state.modo = 'pen';
   else if (r.vista !== 'exportar' && r.vista !== 'excel') state.modo = 'goles';
   try { localStorage.setItem('porteros:modo', state.modo); } catch (e) {}
   pintarModo();
@@ -343,9 +347,17 @@ function pintar() {
     window.scrollTo(0, 0);
     return;
   }
-  if (r.vista === 'exportar' && state.modo === 'fin' && window.FIN) {
+  if (esPen && window.PEN) {
+    window.PEN.pintar(app, r);
+    $('.tabbar').innerHTML = htmlTabbar(window.PEN.pestanas(), window.PEN.pestanaActiva(r));
+    actualizarBotonExcel();
+    window.scrollTo(0, 0);
+    return;
+  }
+  if (r.vista === 'exportar' && (state.modo === 'fin' || state.modo === 'pen')) {
+    var mod = state.modo === 'fin' ? window.FIN : window.PEN;
     vistaExportar(app);
-    $('.tabbar').innerHTML = htmlTabbar(window.FIN.pestanas(), 'exportar');
+    $('.tabbar').innerHTML = htmlTabbar(mod.pestanas(), 'exportar');
     actualizarBotonExcel();
     window.scrollTo(0, 0);
     return;
@@ -398,6 +410,8 @@ function arrancar() {
   }).then(function (f) {
     state.fotosPorteros = f && typeof f === 'object' ? f : {};
     return window.FIN && window.FIN.cargar ? window.FIN.cargar() : null;
+  }).then(function () {
+    return window.PEN && window.PEN.cargar ? window.PEN.cargar() : null;
   }).then(function () {
     return window.DRIVE && window.DRIVE.cargar ? window.DRIVE.cargar().catch(function () {}) : null;
   }).then(function () {
@@ -1119,7 +1133,11 @@ function respaldarEnDrive(reg, archivoClip) {
   var D = window.DRIVE;
   if (!D || D.estado() !== 'conectado') return;
   var sube = archivoClip ? D.subirClip(reg, archivoClip).then(function (id) {
-    if (id) { reg.driveVideoId = id; return (reg.jugadorId ? almacen.guardarEn('finalizaciones', reg) : almacen.guardar(reg)).then(function () { if (state.vista === 'registro') pintar(); }); }
+    if (id) {
+      reg.driveVideoId = id;
+      var st = reg.jugadorId ? 'finalizaciones' : (reg.ladoPortero !== undefined ? 'penaltis' : 'goles');
+      return almacen.guardarEn(st, reg).then(function () { if (state.vista === 'registro' || state.vista === 'pen') pintar(); });
+    }
   }).catch(function (e) { aviso('No se pudo subir el clip a Drive: ' + e.message, 'error'); }) : Promise.resolve();
   sube.then(function () { return D.sincronizar('auto'); });
 }
@@ -1814,7 +1832,7 @@ function construirExcel() {
     informes.push(hojaInforme(('INFORME · ' + p).slice(0, 31), encajados.filter(function (g) { return g.portero === p; }), p));
   });
 
-  var hojasFin = (window.FIN && window.FIN.hojasExcel) ? window.FIN.hojasExcel() : [];
+  var hojasFin = ((window.FIN && window.FIN.hojasExcel) ? window.FIN.hojasExcel() : []).concat((window.PEN && window.PEN.hojasExcel) ? window.PEN.hojasExcel() : []);
 
   return MiniXLSX.crear([
     { nombre: 'LISTA GOLES', filas: lista, congelar: 1, filtro: true, validaciones: validaciones,
@@ -1856,7 +1874,7 @@ function escribirHandle(h, blob) {
 /* Actualiza el Excel: si el usuario eligió un archivo, lo sobrescribe en
    el sitio; si no, lo descarga. */
 function exportarExcel(silencioso) {
-  var hayFin = window.FIN && window.FIN.cuenta && window.FIN.cuenta() > 0;
+  var hayFin = (window.FIN && window.FIN.cuenta && window.FIN.cuenta() > 0) || (window.PEN && window.PEN.cuenta() > 0);
   if (!state.goles.length && !hayFin) { aviso('Aún no hay nada que exportar.', 'error'); return Promise.resolve(); }
   var blob = construirExcel();
   var nombre = CFG.NOMBRE_EXCEL || 'goles-encajados.xlsx';
@@ -1896,7 +1914,8 @@ function copiaJSON() {
   var extra = window.FIN && window.FIN.datosCopia ? window.FIN.datosCopia() : {};
   var datos = { version: 2, exportado: new Date().toISOString(), goles: state.goles,
                 finalizaciones: extra.finalizaciones || [], jugadores: extra.jugadores || [], equipos: extra.equipos || [],
-                fotosPorteros: state.fotosPorteros };
+                fotosPorteros: state.fotosPorteros,
+                penaltis: window.PEN ? window.PEN.datosCopia().penaltis : [] };
   return JSON.stringify(datos, null, 1);
 }
 
@@ -1932,6 +1951,8 @@ function importarCopia(datos) {
       }
     }).then(function () {
       return window.FIN && window.FIN.restaurarCopia ? window.FIN.restaurarCopia(datos) : null;
+    }).then(function () {
+      return window.PEN && window.PEN.restaurarCopia ? window.PEN.restaurarCopia(datos) : null;
     }).then(function () { return almacen.todos(); }).then(function (gs) {
       state.goles = gs;
       aviso('Importados ' + nuevos + ' goles nuevos y ' + actualizados + ' actualizados.', 'ok');
