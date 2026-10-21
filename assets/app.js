@@ -910,6 +910,13 @@ function montarFormulario(app, g, editando) {
     marcarChip(form, campo, g[campo]);
     if (campo === 'tipo') { g.subtipo = ''; g.pie = ''; $('#zona-subtipo').innerHTML = htmlSubtipo(g); }
     if (campo === 'equipo') $('#zona-jugadores', form).innerHTML = htmlJugadores(g);
+    /* Un penalti se lanza siempre desde la zona 2 (frontal del área). */
+    if (campo === 'subtipo' && valor === 'PENALTY') {
+      g.zonaDisparo = 2; g.area = 'Dentro del Area'; g.banda = 'Centro';
+      $$('#zona-campo [data-zona]', form).forEach(function (q) { q.classList.toggle('sel', q.getAttribute('data-zona') === '2'); });
+      $('#txt-zona-campo').textContent = etiquetaZona('campo', 2);
+      marcarChip(form, 'area', g.area); marcarChip(form, 'banda', g.banda);
+    }
   });
 
   /* Zonas */
