@@ -108,7 +108,41 @@ Un penalti que acaba en **gol** crea solo su gol en «Goles encajados»
 a parada o se borra, el gol desaparece. Por eso el desplegable de jugada del
 informe de goles no incluye «Penalti».
 
-## 6. Google Drive (copia automática)
+## 5c. Entrenos
+
+Selector «Entrenos» arriba. Cada sesión guarda fecha, tipo (entreno, activación
+pre-partido, recuperación, individual), porteros presentes, duración,
+intensidad, los **objetivos trabajados** (juego aéreo, juego de pies, blocaje,
+desvíos, 1x1, posicionamiento, reflejos, balón parado, saques, caídas, físico,
+coordinación, táctico, vídeo; lista en `OBJETIVOS_ENTRENO` de `config.js`, y el
+entrenador puede añadir otros desde la app), el objetivo principal, los
+ejercicios y las observaciones.
+
+Informe y PDF acotables por fechas (desde / hasta, atajos 30 y 90 días y
+temporada): sesiones y horas, veces trabajado cada objetivo, sesiones por
+semana, cobertura con **última vez y días sin trabajar** cada objetivo (en rojo
+a partir de 14), tabla objetivo × mes y lista de sesiones. En el Excel, hojas
+`ENTRENOS` (una columna por objetivo, 1 = trabajado) y `ENTRENOS RESUMEN`.
+
+## 6. Carpeta del ordenador (copia automática)
+
+Exportar → *Carpeta en este ordenador* → **Elegir carpeta…** (Chrome o Edge de
+escritorio). Desde ese momento, cada vez que se guarda algo la app escribe en
+la carpeta `copia-goles.json` (todo lo registrado), el Excel y los clips en
+`clips/` (con el id del registro delante del nombre). No depende de Google ni
+de ninguna cuenta.
+
+- Si la carpeta ya tiene una copia al enlazarla, primero se incorpora a la app
+  (por id, sin borrar nada) y después se escribe: nunca se pisa una copia buena.
+- **Restaurar desde la carpeta** vuelve a cargar datos y clips en otro
+  ordenador o tras perder el navegador. Para mudarse: copiar la carpeta, abrir
+  la app, elegirla.
+- El navegador puede pedir confirmar el permiso en cada sesión nueva: sale un
+  aviso arriba con **Reconectar**. Con la app instalada, Chrome lo recuerda.
+- Si la carpeta está dentro de OneDrive, Google Drive o Dropbox, la copia
+  queda además en la nube sin configurar nada más.
+
+## 6b. Google Drive (copia automática)
 
 Con Drive conectado, cada vez que se guarda un gol o un remate la app sube a
 la carpeta «Goles encajados» de la cuenta de Google del usuario: la copia
@@ -136,8 +170,9 @@ La app solo puede ver y tocar los archivos que ella misma crea en Drive
 - El clip se guarda **en el navegador del dispositivo** donde lo metes. No se
   sube a ningún sitio. Para compartirlo, usa el campo *enlace* (Drive, YouTube…).
 - `GUARDAR_VIDEO: false` en `config.js` si no quieres que la app almacene vídeo.
-- Pestaña Excel → *Descargar copia (.json)* guarda todos los goles (sin vídeos)
-  para cambiar de dispositivo o restaurar.
+- Exportar → *Descargar copia (.json)* guarda todos los registros (sin vídeos)
+  para cambiar de dispositivo o restaurar. Con la carpeta enlazada (sección 6)
+  no hace falta: la copia y los clips se guardan solos.
 
 ## 8. Archivos
 
@@ -150,6 +185,8 @@ assets/xlsx-min.js generador de .xlsx sin librerías externas
 assets/styles.css diseño
 assets/finalizacion.js módulo Finalización de delanteros
 assets/penaltis.js     módulo Penaltis
+assets/entrenos.js     módulo Entrenos (diario de sesiones)
+assets/carpeta.js      copia automática en una carpeta del ordenador
 assets/drive.js    copia automática en Google Drive
 ```
 

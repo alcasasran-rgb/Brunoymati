@@ -113,7 +113,7 @@ function aviso(texto, tipo) {
    IndexedDB con tres almacenes: goles (los datos), videos (los clips) y
    ajustes (preferencias y el enlace al archivo Excel). */
 
-var DB_NOMBRE = 'porteros', DB_VERSION = 3, _db = null;
+var DB_NOMBRE = 'porteros', DB_VERSION = 4, _db = null;
 
 function db() {
   if (_db) return Promise.resolve(_db);
@@ -130,6 +130,8 @@ function db() {
       if (!d.objectStoreNames.contains('equipos')) d.createObjectStore('equipos', { keyPath: 'nombre' });
       /* v3: penaltis */
       if (!d.objectStoreNames.contains('penaltis')) d.createObjectStore('penaltis', { keyPath: 'id' });
+      /* v4: entrenos */
+      if (!d.objectStoreNames.contains('entrenos')) d.createObjectStore('entrenos', { keyPath: 'id' });
     };
     pet.onsuccess = function () { _db = pet.result; res(_db); };
     pet.onerror = function () { rej(pet.error); };
@@ -332,9 +334,10 @@ function pintar() {
   var r = ruta();
   state.vista = r.vista;
   var app = $('#app');
-  var esFin = r.vista.indexOf('fin') === 0, esPen = r.vista.indexOf('pen') === 0;
+  var esFin = r.vista.indexOf('fin') === 0, esPen = r.vista.indexOf('pen') === 0, esEnt = r.vista.indexOf('ent') === 0;
   if (esFin) state.modo = 'fin';
   else if (esPen) state.modo = 'pen';
+  else if (esEnt) state.modo = 'ent';
   else if (r.vista !== 'exportar' && r.vista !== 'excel') state.modo = 'goles';
   try { localStorage.setItem('porteros:modo', state.modo); } catch (e) {}
   pintarModo();
@@ -354,8 +357,15 @@ function pintar() {
     window.scrollTo(0, 0);
     return;
   }
-  if (r.vista === 'exportar' && (state.modo === 'fin' || state.modo === 'pen')) {
-    var mod = state.modo === 'fin' ? window.FIN : window.PEN;
+  if (esEnt && window.ENT) {
+    window.ENT.pintar(app, r);
+    $('.tabbar').innerHTML = htmlTabbar(window.ENT.pestanas(), window.ENT.pestanaActiva(r));
+    actualizarBotonExcel();
+    window.scrollTo(0, 0);
+    return;
+  }
+  if (r.vista === 'exportar' && (state.modo === 'fin' || state.modo === 'pen' || state.modo === 'ent')) {
+    var mod = state.modo === 'fin' ? window.FIN : state.modo === 'pen' ? window.PEN : window.ENT;
     vistaExportar(app);
     $('.tabbar').innerHTML = htmlTabbar(mod.pestanas(), 'exportar');
     actualizarBotonExcel();
@@ -413,9 +423,14 @@ function arrancar() {
   }).then(function () {
     return window.PEN && window.PEN.cargar ? window.PEN.cargar() : null;
   }).then(function () {
+    return window.ENT && window.ENT.cargar ? window.ENT.cargar() : null;
+  }).then(function () {
     return window.DRIVE && window.DRIVE.cargar ? window.DRIVE.cargar().catch(function () {}) : null;
   }).then(function () {
+    return window.CARPETA && window.CARPETA.cargar ? window.CARPETA.cargar() : null;
+  }).then(function () {
     pintar();
+    if (window.CARPETA) window.CARPETA.avisoArranque();
   }).catch(function (e) {
     aviso('No se ha podido abrir el almacén del navegador: ' + e, 'error');
     pintar();
@@ -1137,9 +1152,13 @@ function persistirVideo(obj) {
 /* Copia en Google Drive tras guardar: primero el clip (si lo hay), luego
    datos y Excel. Nunca bloquea el guardado local. */
 function respaldarEnDrive(reg, archivoClip) {
+  var C = window.CARPETA;
+  if (C && C.estado() === 'conectada') {
+    (reg && archivoClip ? C.guardarClip(reg, archivoClip) : Promise.resolve()).then(function () { return C.guardarTodo('auto'); });
+  }
   var D = window.DRIVE;
   if (!D || D.estado() !== 'conectado') return;
-  var sube = archivoClip ? D.subirClip(reg, archivoClip).then(function (id) {
+  var sube = reg && archivoClip ? D.subirClip(reg, archivoClip).then(function (id) {
     if (id) {
       reg.driveVideoId = id;
       var st = reg.jugadorId ? 'finalizaciones' : (reg.ladoPortero !== undefined ? 'penaltis' : 'goles');
@@ -1839,7 +1858,7 @@ function construirExcel() {
     informes.push(hojaInforme(('INFORME · ' + p).slice(0, 31), encajados.filter(function (g) { return g.portero === p; }), p));
   });
 
-  var hojasFin = ((window.FIN && window.FIN.hojasExcel) ? window.FIN.hojasExcel() : []).concat((window.PEN && window.PEN.hojasExcel) ? window.PEN.hojasExcel() : []);
+  var hojasFin = ((window.FIN && window.FIN.hojasExcel) ? window.FIN.hojasExcel() : []).concat((window.PEN && window.PEN.hojasExcel) ? window.PEN.hojasExcel() : []).concat((window.ENT && window.ENT.hojasExcel) ? window.ENT.hojasExcel() : []);
 
   return MiniXLSX.crear([
     { nombre: 'LISTA GOLES', filas: lista, congelar: 1, filtro: true, validaciones: validaciones,
@@ -1881,7 +1900,7 @@ function escribirHandle(h, blob) {
 /* Actualiza el Excel: si el usuario eligió un archivo, lo sobrescribe en
    el sitio; si no, lo descarga. */
 function exportarExcel(silencioso) {
-  var hayFin = (window.FIN && window.FIN.cuenta && window.FIN.cuenta() > 0) || (window.PEN && window.PEN.cuenta() > 0);
+  var hayFin = (window.FIN && window.FIN.cuenta && window.FIN.cuenta() > 0) || (window.PEN && window.PEN.cuenta() > 0) || (window.ENT && window.ENT.cuenta() > 0);
   if (!state.goles.length && !hayFin) { aviso('Aún no hay nada que exportar.', 'error'); return Promise.resolve(); }
   var blob = construirExcel();
   var nombre = CFG.NOMBRE_EXCEL || 'goles-encajados.xlsx';
@@ -1922,7 +1941,8 @@ function copiaJSON() {
   var datos = { version: 2, exportado: new Date().toISOString(), goles: state.goles,
                 finalizaciones: extra.finalizaciones || [], jugadores: extra.jugadores || [], equipos: extra.equipos || [],
                 fotosPorteros: state.fotosPorteros,
-                penaltis: window.PEN ? window.PEN.datosCopia().penaltis : [] };
+                penaltis: window.PEN ? window.PEN.datosCopia().penaltis : [],
+                entrenos: window.ENT ? window.ENT.datosCopia().entrenos : [], objetivosExtra: window.ENT ? window.ENT.datosCopia().objetivosExtra : [] };
   return JSON.stringify(datos, null, 1);
 }
 
@@ -1960,11 +1980,20 @@ function importarCopia(datos) {
       return window.FIN && window.FIN.restaurarCopia ? window.FIN.restaurarCopia(datos) : null;
     }).then(function () {
       return window.PEN && window.PEN.restaurarCopia ? window.PEN.restaurarCopia(datos) : null;
+    }).then(function () {
+      return window.ENT && window.ENT.restaurarCopia ? window.ENT.restaurarCopia(datos) : null;
     }).then(function () { return almacen.todos(); }).then(function (gs) {
       state.goles = gs;
       aviso('Importados ' + nuevos + ' goles nuevos y ' + actualizados + ' actualizados.', 'ok');
       pintar();
     });
+}
+
+/* Vuelve a leer todos los almacenes (tras una restauración externa). */
+function recargarTodo() {
+  return almacen.todos().then(function (gs) { state.goles = gs || []; return window.FIN && window.FIN.cargar ? window.FIN.cargar() : null; })
+    .then(function () { return window.PEN && window.PEN.cargar ? window.PEN.cargar() : null; })
+    .then(function () { return window.ENT && window.ENT.cargar ? window.ENT.cargar() : null; });
 }
 
 /* ============================== Vista: informe en PDF ==============================
@@ -2061,6 +2090,7 @@ function vistaExportar(app) {
   var conHandle = !!state.excelHandle;
   app.innerHTML = '<div class="vista">' +
     '<div class="vista-cab"><h1>Exportar</h1><a class="btn" href="#/informe">← Informe</a></div>' +
+    (window.CARPETA ? window.CARPETA.htmlSeccion() : '') +
     (window.DRIVE ? window.DRIVE.htmlSeccion() : '') +
 
     '<section class="bloque">' +
@@ -2084,7 +2114,7 @@ function vistaExportar(app) {
 
     '<section class="bloque">' +
       '<h2>Copia de seguridad</h2>' +
-      '<p>Los datos viven en este navegador; con Google Drive conectado se copian solos. Esta copia manual sirve para cambiar de dispositivo sin Drive (incluye los fotogramas, no los vídeos).</p>' +
+      '<p>Los datos viven en este navegador; con una carpeta o Google Drive enlazados se copian solos. Esta copia manual sirve para llevarlos a otro dispositivo (incluye los fotogramas, no los vídeos).</p>' +
       '<p class="nota" id="estado-almacen"></p>' +
       '<div class="acciones">' +
         '<button type="button" class="btn" id="btn-json">Descargar copia (.json)</button>' +
@@ -2101,6 +2131,7 @@ function vistaExportar(app) {
     '</section>' +
   '</div>';
 
+  if (window.CARPETA) window.CARPETA.montar(app);
   if (window.DRIVE) window.DRIVE.montar(app);
   $('#btn-excel', app).addEventListener('click', function () { exportarExcel(); });
   var enlazar = $('#btn-enlazar', app);
@@ -2131,7 +2162,7 @@ window.APP = {
   montarVideo: montarVideo, persistirVideo: persistirVideo, pintarFotos: pintarFotos,
   contar: contar, ordenado: ordenado, pct: pct, barras: barras, kpi: kpi, svgColumnas: svgColumnas, svgDonut: svgDonut,
   norm: norm, rivales: rivales, vueltaDeJornada: vueltaDeJornada, filtrarUltimas: filtrarUltimas, chipsUltimas: chipsUltimas,
-  copiaJSON: copiaJSON, importarCopia: importarCopia, construirExcel: construirExcel, respaldarEnDrive: respaldarEnDrive,
+  copiaJSON: copiaJSON, importarCopia: importarCopia, construirExcel: construirExcel, respaldarEnDrive: respaldarEnDrive, respaldar: respaldarEnDrive, recargarTodo: recargarTodo, escudoPropio: escudoPropio,
   avatarPortero: avatarPortero, iniciales: iniciales, slug: slug, imagenConReserva: imagenConReserva,
   T: T, G: G, SUBTIPO: SUBTIPO, CFG: CFG, Z: Z, COLOR_SERIE: COLOR_SERIE, tarjetaGolHtml: tarjetaGol, claseEvit: claseEvit
 };

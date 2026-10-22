@@ -102,6 +102,11 @@ window.CONFIG = {
   /* Posiciones que salen por defecto en Finalización. */
   POSICIONES_SEGUIDAS: ['DEL'],
 
+  /* Objetivos de entrenamiento (módulo Entrenos). El entrenador puede
+     añadir otros desde la propia app; se quedan guardados. */
+  OBJETIVOS_ENTRENO: ['Juego aéreo', 'Juego de pies', 'Blocaje', 'Desvíos', '1x1', 'Posicionamiento', 'Reflejos / reacción',
+    'Balón parado', 'Saques / distribución', 'Caídas', 'Físico / fuerza', 'Velocidad / coordinación', 'Táctico / lectura', 'Vídeo / análisis'],
+
   /* Guardar el vídeo dentro del navegador (true) o solo su nombre/enlace (false).
      true = puedes volver a ver el clip desde la app, pero ocupa espacio en el
      dispositivo. false = la app no almacena vídeo, solo los datos. */

@@ -386,3 +386,22 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em;back
 
 .modos a{padding-left:4px;padding-right:4px;font-size:10px;letter-spacing:.1em}
 @media (min-width:480px){ .modos a{font-size:11px;letter-spacing:.16em} }
+
+/* ---------- Entrenos ---------- */
+.entreno .gol-min{flex-direction:column;line-height:1;gap:2px}
+.entreno .gol-min span{font-size:22px}
+.entreno .gol-min small{font-size:9px;letter-spacing:.14em;font-weight:700}
+.badge.principal{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.ent-txt{font-size:13px;color:var(--muted);margin-top:8px;white-space:pre-line}
+.ent-nuevo-obj{display:flex;gap:8px;margin-top:10px;align-items:stretch}
+.ent-nuevo-obj input{flex:1;min-width:0;background:var(--bg);color:var(--text);border:1px solid var(--line-fuerte);border-radius:8px;padding:0 12px;min-height:40px}
+.ent-alerta{color:var(--rojo-celta);font-weight:700}
+.pdf .ent-alerta{color:#B3261E}
+.alerta-ent{border-left:3px solid var(--rojo-celta);padding:8px 12px;margin:-10px 0 18px;background:var(--bg2)}
+.alerta-ent strong{color:#fff}
+.ent-celda{background:rgba(138,195,238,calc(var(--i,0) * .55))}
+.pdf .ent-celda{background:rgba(27,95,163,calc(var(--i,0) * .35))}
+.tabla td.ent-cont{white-space:normal;min-width:180px;font-size:11px;color:var(--muted)}
+.btn-banner{background:#fff;color:var(--accent-ink);border:0;border-radius:6px;padding:4px 12px;margin-left:8px;font-weight:700}
+.modos a{font-size:10px;letter-spacing:.08em;padding-left:4px;padding-right:4px}
+@media (min-width:480px){ .modos a{font-size:11px;letter-spacing:.14em} }

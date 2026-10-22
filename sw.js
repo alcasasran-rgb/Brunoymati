@@ -1,11 +1,11 @@
 /* Servicio en segundo plano: guarda la app en el navegador para que abra sin internet.
    Estrategia: primero red (así siempre llega la última versión), y si no hay conexión, copia guardada.
    Las fotos y escudos se guardan la primera vez que se ven. */
-const VERSION = 'goles-v1';
+const VERSION = 'goles-v2';
 const BASE = [
   './', 'index.html', 'config.js', 'manifest.webmanifest',
   'assets/styles.css', 'assets/zonas.js', 'assets/xlsx-min.js', 'assets/app.js',
-  'assets/finalizacion.js', 'assets/penaltis.js', 'assets/drive.js',
+  'assets/finalizacion.js', 'assets/penaltis.js', 'assets/entrenos.js', 'assets/carpeta.js', 'assets/drive.js',
   'assets/icono-192.png', 'assets/icono-512.png', 'assets/icono-180.png', 'assets/favicon.ico'
 ];
 
