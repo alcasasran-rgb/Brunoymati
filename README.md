@@ -126,9 +126,9 @@ semana, cobertura con **última vez y días sin trabajar** cada objetivo (en roj
 a partir de 14), tabla objetivo × mes y lista de sesiones. En el Excel, hojas
 `ENTRENOS` (una columna por objetivo, 1 = trabajado) y `ENTRENOS RESUMEN`.
 
-## 6. Carpeta del ordenador (copia automática)
+## 6. Carpeta de seguridad (copia automática)
 
-Exportar → *Carpeta en este ordenador* → **Elegir carpeta…** (Chrome o Edge de
+Exportar → *Carpeta de seguridad* → **Elegir carpeta…** (Chrome o Edge de
 escritorio). Desde ese momento, cada vez que se guarda algo la app escribe en
 la carpeta `copia-goles.json` (todo lo registrado), el Excel, los clips en
 `clips/` y los adjuntos de los entrenos en `adjuntos/` (con el id del registro

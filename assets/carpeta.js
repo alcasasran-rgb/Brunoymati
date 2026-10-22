@@ -226,7 +226,7 @@ function htmlEstado(texto, tipo) {
 
 function htmlSeccion() {
   var c = E.estado === 'conectada';
-  return '<section class="bloque"><h2>Carpeta en este ordenador</h2><div id="carpeta-estado">' + htmlEstado() + '</div>' +
+  return '<section class="bloque"><h2>Carpeta de seguridad</h2><div id="carpeta-estado">' + htmlEstado() + '</div>' +
     (E.estado === 'no-soportado' ? '' :
       '<div class="acciones">' +
         (E.estado === 'permiso' ? '<button type="button" class="btn primary grande" id="carpeta-reconectar">Reconectar</button>' : '') +
