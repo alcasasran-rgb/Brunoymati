@@ -319,8 +319,9 @@ var TABBAR_GOLES = [
 ];
 
 function htmlTabbar(pestanas, activa) {
+  pestanas = pestanas.concat([['#guardar', 'guardar', 'Guardar', '<path d="M5 4.5h11l3 3v12H5z"/><path d="M8 4.5v5h7v-5M8 19.5v-6h8v6"/>']]);
   return pestanas.map(function (t) {
-    return '<a href="' + t[0] + '" data-tab="' + t[1] + '" class="' + (activa === t[1] ? 'activa' : '') + '">' +
+    return '<a href="' + t[0] + '" data-tab="' + t[1] + '" class="' + (activa === t[1] ? 'activa' : '') + (t[1] === 'guardar' ? ' tab-guardar' : '') + '">' +
       '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + t[3] + '</svg>' +
       '<span>' + t[2] + '</span>' + (t[1] === 'registro' ? '<span class="pill" id="pill-total" hidden>0</span>' : '') + '</a>';
   }).join('');
@@ -390,6 +391,15 @@ function pintar() {
 }
 
 window.addEventListener('hashchange', pintar);
+
+/* La pestaña GUARDAR no cambia de vista: escribe todo en la carpeta de seguridad. */
+document.addEventListener('click', function (e) {
+  var a = e.target.closest('.tabbar a[data-tab="guardar"]');
+  if (!a) return;
+  e.preventDefault();
+  a.classList.add('pulsada'); setTimeout(function () { a.classList.remove('pulsada'); }, 600);
+  guardarTodoAhora();
+});
 
 /* ============================== Arranque ============================== */
 
@@ -2133,11 +2143,8 @@ function vistaExportar(app) {
       '</details>' +
     '</section>' +
 
-    '<div class="guardar-todo"><button type="button" class="btn primary" id="btn-guardar-todo">GUARDAR</button>' +
-      '<p class="nota">Por si acaso: vuelve a escribir ahora mismo todo lo registrado en la carpeta de seguridad. Si aún no hay carpeta, te pide elegirla.</p></div>' +
   '</div>';
 
-  $('#btn-guardar-todo', app).addEventListener('click', guardarTodoAhora);
   if (window.CARPETA) window.CARPETA.montar(app);
   $('#btn-excel', app).addEventListener('click', function () { exportarExcel(); });
   var enlazar = $('#btn-enlazar', app);

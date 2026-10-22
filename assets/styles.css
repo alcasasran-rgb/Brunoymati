@@ -412,6 +412,6 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em;back
 .adj-quitar{background:none;border:1px solid var(--line-fuerte);color:var(--text);border-radius:6px;width:30px;height:30px;flex:0 0 auto}
 .badge.adj{cursor:pointer;background:none;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-transform:none;letter-spacing:0;font-size:11px}
 .formulario.arrastrando #zona-adjuntos{background:var(--bg3);border-color:var(--accent-fuerte)}
-.guardar-todo{text-align:center;margin:28px 0 10px}
-.guardar-todo .btn{width:100%;max-width:520px;min-height:64px;font-size:18px;letter-spacing:.2em;font-weight:800;border-radius:12px}
-.guardar-todo .nota{margin-top:10px}
+.tabbar a.tab-guardar{color:var(--accent-ink);background:var(--accent);border-radius:10px;margin:6px 6px 6px 2px}
+.tabbar a.tab-guardar span{font-weight:800}
+.tabbar a.tab-guardar.pulsada{background:#fff}
