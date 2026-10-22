@@ -117,6 +117,9 @@ desvíos, 1x1, posicionamiento, reflejos, balón parado, saques, caídas, físic
 coordinación, táctico, vídeo; lista en `OBJETIVOS_ENTRENO` de `config.js`, y el
 entrenador puede añadir otros desde la app), el objetivo principal, los
 ejercicios y las observaciones.
+Cada sesión admite **archivos adjuntos** (la ficha en PDF, fotos, vídeo…),
+arrastrando o eligiendo; se guardan en el navegador y en la carpeta enlazada
+(`adjuntos/`), desde la que se restauran.
 
 Informe y PDF acotables por fechas (desde / hasta, atajos 30 y 90 días y
 temporada): sesiones y horas, veces trabajado cada objetivo, sesiones por
@@ -128,8 +131,11 @@ a partir de 14), tabla objetivo × mes y lista de sesiones. En el Excel, hojas
 
 Exportar → *Carpeta en este ordenador* → **Elegir carpeta…** (Chrome o Edge de
 escritorio). Desde ese momento, cada vez que se guarda algo la app escribe en
-la carpeta `copia-goles.json` (todo lo registrado), el Excel y los clips en
-`clips/` (con el id del registro delante del nombre). No depende de Google ni
+la carpeta `copia-goles.json` (todo lo registrado), el Excel, los clips en
+`clips/` y los adjuntos de los entrenos en `adjuntos/` (con el id del registro
+delante del nombre). La copia y el Excel se **sobrescriben** con el estado
+completo; los clips y adjuntos se acumulan, uno por registro, y se quitan al
+borrar el registro. No depende de Google ni
 de ninguna cuenta.
 
 - Si la carpeta ya tiene una copia al enlazarla, primero se incorpora a la app

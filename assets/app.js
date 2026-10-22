@@ -1151,13 +1151,16 @@ function persistirVideo(obj) {
 
 /* Copia en Google Drive tras guardar: primero el clip (si lo hay), luego
    datos y Excel. Nunca bloquea el guardado local. */
-function respaldarEnDrive(reg, archivoClip) {
+function respaldarEnDrive(reg, archivoClip, adjuntos) {
   var C = window.CARPETA;
   if (C && C.estado() === 'conectada') {
-    (reg && archivoClip ? C.guardarClip(reg, archivoClip) : Promise.resolve()).then(function () { return C.guardarTodo('auto'); });
+    (reg && archivoClip ? C.guardarClip(reg, archivoClip) : Promise.resolve())
+      .then(function () { return C.guardarAdjuntos(adjuntos || []); })
+      .then(function () { return C.guardarTodo('auto'); });
   }
   var D = window.DRIVE;
   if (!D || D.estado() !== 'conectado') return;
+  (adjuntos || []).forEach(function (a) { D.subirClip({ id: a.id, fecha: reg && reg.fecha, nombre: a.archivo.name }, a.archivo).catch(function () {}); });
   var sube = reg && archivoClip ? D.subirClip(reg, archivoClip).then(function (id) {
     if (id) {
       reg.driveVideoId = id;

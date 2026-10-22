@@ -36,7 +36,7 @@ function elegir() {
     .then(function (r) {
       /* Primero se incorpora lo que ya hubiera en la carpeta (sin borrar
          nada) y solo después se escribe: así nunca se pisa una copia buena. */
-      A.aviso('Carpeta «' + E.handle.name + '» enlazada.' + (r && r.n ? ' Recuperados ' + r.n + ' registros' + (r.clips ? ' y ' + r.clips + ' clips' : '') + ' que ya había en ella.' : ' Guardando la copia…'), 'ok');
+      A.aviso('Carpeta «' + E.handle.name + '» enlazada.' + (r && r.n ? ' Recuperados ' + r.n + ' registro' + (r.n === 1 ? '' : 's') + (r.clips ? ' y ' + r.clips + ' archivo' + (r.clips === 1 ? '' : 's') : '') + ' que ya había en ella.' : ' Guardando la copia…'), 'ok');
       return guardarTodo('manual');
     })
     .catch(function (e) { if (e && e.name !== 'AbortError') A.aviso('No se pudo elegir la carpeta: ' + e.message, 'error'); });
@@ -69,6 +69,25 @@ function guardarClip(reg, archivo) {
   return E.handle.getDirectoryHandle('clips', { create: true }).then(function (d) {
     return escribir(d, reg.id + '__' + archivo.name.replace(/[\\/:*?"<>|]/g, '_'), archivo);
   }).then(function () { return true; }).catch(function (e) { A.aviso('No se pudo copiar el clip a la carpeta: ' + e.message, 'error'); return false; });
+}
+
+/* Archivos adjuntos de una sesión de entreno: adjuntos/<id>__<nombre>. */
+function guardarAdjuntos(lista) {
+  if (E.estado !== 'conectada' || !lista || !lista.length) return Promise.resolve(false);
+  return E.handle.getDirectoryHandle('adjuntos', { create: true }).then(function (d) {
+    return lista.reduce(function (p, a) { return p.then(function () { return escribir(d, a.id + '__' + a.archivo.name.replace(/[\\/:*?"<>|]/g, '_'), a.archivo); }); }, Promise.resolve());
+  }).then(function () { return true; }).catch(function (e) { A.aviso('No se pudo copiar el archivo a la carpeta: ' + e.message, 'error'); return false; });
+}
+
+/* Quita de la carpeta los archivos (clips o adjuntos) cuyo id empiece por
+   alguno de los dados. Silencioso: si no están, no pasa nada. */
+function borrarArchivos(sub, ids) {
+  if (E.estado !== 'conectada' || !ids || !ids.length) return Promise.resolve();
+  return listarDir(sub).then(function (archivos) {
+    return E.handle.getDirectoryHandle(sub).then(function (d) {
+      return Promise.all(ids.filter(function (id) { return archivos[id]; }).map(function (id) { return d.removeEntry(archivos[id].name).catch(function () {}); }));
+    });
+  }).catch(function () {});
 }
 
 /* Copia completa + Excel. Agrupa peticiones seguidas en una sola escritura. */
@@ -130,6 +149,39 @@ function restaurarClips() {
         }, Promise.resolve());
       });
     }, Promise.resolve()).then(function () { return n; });
+  }).then(function (n) { return restaurarAdjuntos().then(function (m) { return n + m; }); });
+}
+
+function listarDir(nombre) {
+  return E.handle.getDirectoryHandle(nombre).then(function (d) {
+    var archivos = {}, it = d.values();
+    function paso() {
+      return it.next().then(function (r) {
+        if (r.done) return archivos;
+        var h = r.value, i = h.name.indexOf('__');
+        if (h.kind === 'file' && i > 0) archivos[h.name.slice(0, i)] = h;
+        return paso();
+      });
+    }
+    return paso();
+  }).catch(function () { return {}; });
+}
+
+function restaurarAdjuntos() {
+  return listarDir('adjuntos').then(function (archivos) {
+    if (!Object.keys(archivos).length) return 0;
+    var n = 0;
+    return A.almacen.todosDe('entrenos').then(function (es) {
+      return (es || []).reduce(function (p, e) {
+        return (e.adjuntos || []).reduce(function (q, a) {
+          if (!archivos[a.id]) return q;
+          return q.then(function () { return A.almacen.video(a.id); }).then(function (r) {
+            if (r && r.blob) return;
+            return archivos[a.id].getFile().then(function (f) { return A.almacen.ponVideo(a.id, f, a.nombre || f.name); }).then(function () { n++; });
+          }).catch(function () {});
+        }, p);
+      }, Promise.resolve());
+    }).then(function () { return n; });
   });
 }
 
@@ -152,7 +204,7 @@ function restaurar() {
   A.aviso('Leyendo la carpeta…');
   return fusionar().then(function (r) {
     if (!r) { A.aviso('En esa carpeta no hay ninguna copia (copia-goles.json).', 'error'); return; }
-    A.aviso('Restaurado desde la carpeta: ' + r.n + ' registros' + (r.clips ? ' y ' + r.clips + ' clip' + (r.clips === 1 ? '' : 's') + ' de vídeo' : '') + '.', 'ok');
+    A.aviso('Restaurado desde la carpeta: ' + r.n + ' registro' + (r.n === 1 ? '' : 's') + (r.clips ? ' y ' + r.clips + ' archivo' + (r.clips === 1 ? '' : 's') + ' (clips y adjuntos)' : '') + '.', 'ok');
   }).catch(function (e) { A.aviso('No se pudo restaurar: ' + (e && e.message || e), 'error'); });
 }
 
@@ -182,7 +234,7 @@ function htmlSeccion() {
         (c ? '<button type="button" class="btn primary" id="carpeta-guardar">Guardar ahora</button><button type="button" class="btn" id="carpeta-restaurar">Restaurar desde la carpeta</button>' : '') +
         (E.handle ? '<button type="button" class="btn" id="carpeta-cambiar">Cambiar carpeta…</button><button type="button" class="btn" id="carpeta-quitar">Desenlazar</button>' : '') +
       '</div>' +
-      (c ? '<p class="nota">En la carpeta: <strong>copia-goles.json</strong> (todo lo registrado), el Excel y <strong>clips/</strong> con los vídeos. Para pasar a otro ordenador, copia la carpeta y usa «Restaurar desde la carpeta».</p>' : '')) +
+      (c ? '<p class="nota">En la carpeta: <strong>copia-goles.json</strong> (todo lo registrado), el Excel, <strong>clips/</strong> con los vídeos y <strong>adjuntos/</strong> con los archivos de los entrenos. Para pasar a otro ordenador, copia la carpeta y usa «Restaurar desde la carpeta».</p>' : '')) +
     '</section>';
 }
 
@@ -202,6 +254,6 @@ function avisoArranque() {
   if (bt) bt.addEventListener('click', function () { reconectar().then(function (ok) { if (ok) { b.hidden = true; A.aviso('Carpeta reconectada.', 'ok'); } }); });
 }
 
-return { cargar: cargar, elegir: elegir, reconectar: reconectar, quitar: quitar, guardarTodo: guardarTodo, guardarClip: guardarClip, restaurar: restaurar,
+return { cargar: cargar, elegir: elegir, reconectar: reconectar, quitar: quitar, guardarTodo: guardarTodo, guardarClip: guardarClip, guardarAdjuntos: guardarAdjuntos, borrarArchivos: borrarArchivos, restaurar: restaurar,
          htmlSeccion: htmlSeccion, montar: montar, avisoArranque: avisoArranque, estado: function () { return E.estado; }, _E: E };
 })();

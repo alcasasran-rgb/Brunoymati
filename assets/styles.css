@@ -405,3 +405,10 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em;back
 .btn-banner{background:#fff;color:var(--accent-ink);border:0;border-radius:6px;padding:4px 12px;margin-left:8px;font-weight:700}
 .modos a{font-size:10px;letter-spacing:.08em;padding-left:4px;padding-right:4px}
 @media (min-width:480px){ .modos a{font-size:11px;letter-spacing:.14em} }
+.adjuntos{list-style:none;margin-top:10px}
+.adjuntos li{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
+.adjuntos li.pendiente .adj-nombre{color:var(--accent)}
+.adj-nombre{flex:1;min-width:0;text-align:left;background:none;border:0;color:var(--text);padding:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.adj-quitar{background:none;border:1px solid var(--line-fuerte);color:var(--text);border-radius:6px;width:30px;height:30px;flex:0 0 auto}
+.badge.adj{cursor:pointer;background:none;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-transform:none;letter-spacing:0;font-size:11px}
+.formulario.arrastrando #zona-adjuntos{background:var(--bg3);border-color:var(--accent-fuerte)}

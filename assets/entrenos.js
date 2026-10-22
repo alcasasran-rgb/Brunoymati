@@ -19,7 +19,8 @@ var OBJETIVOS_BASE = CFG.OBJETIVOS_ENTRENO || [
 var COLOR_TIPO = { 'Entreno': '#1B5FA3', 'Activación pre-partido': '#8AC3EE', 'Recuperación': '#1E7D55', 'Individual': '#B97A00' };
 var ALERTA_DIAS = 14;   /* a partir de aquí un objetivo se marca como «hace mucho» */
 
-var D = { entrenos: [], extra: [], filtro: { portero: '', desde: '', hasta: '' }, borrador: null, volverA: '#/ent' };
+var D = { entrenos: [], extra: [], filtro: { portero: '', desde: '', hasta: '' }, borrador: null, volverA: '#/ent', pendientes: [] };
+var MAX_ADJUNTO_MB = 600;
 
 function cargar() {
   return A.almacen.todosDe('entrenos').then(function (r) { D.entrenos = r || []; return A.almacen.ajuste('objetivosExtra'); })
@@ -131,7 +132,8 @@ function tarjeta(e) {
     '<div class="gol-cuerpo"><div class="gol-tit">' + esc(e.tipo || 'Entreno') + (e.duracion ? ' <span class="muted">· ' + esc(e.duracion) + '′</span>' : '') + (e.intensidad ? ' <span class="muted">· ' + esc(e.intensidad) + '</span>' : '') + '</div>' +
       '<div class="gol-meta">' + ((e.porteros || []).length ? esc(e.porteros.join(', ')) : '<span class="muted">Sin porteros anotados</span>') + (e.jornada ? ' · pre J' + esc(e.jornada) : '') + '</div>' +
       '<div class="gol-pie">' + (e.objetivos || []).map(function (o) { return '<span class="badge' + (o === e.principal ? ' principal' : '') + '">' + esc(o) + '</span>'; }).join('') +
-        (!(e.objetivos || []).length ? '<span class="badge">Sin objetivos</span>' : '') + '</div>' +
+        (!(e.objetivos || []).length ? '<span class="badge">Sin objetivos</span>' : '') +
+        (e.adjuntos || []).map(function (a) { return '<button type="button" class="badge link adj" data-adjunto="' + esc(a.id) + '" title="Abrir">📎 ' + esc(a.nombre) + '</button>'; }).join('') + '</div>' +
       (e.contenido ? '<p class="ent-txt">' + esc(e.contenido) + '</p>' : '') + '</div>' +
     '<a class="gol-editar" href="#/ent-editar/' + encodeURIComponent(e.id) + '" aria-label="Editar">›</a></article>';
 }
@@ -164,8 +166,19 @@ function textoRango() {
 
 /* ------------------------------ Vista: lista ------------------------------ */
 
+function abrirAdjunto(id) {
+  A.almacen.video(id).then(function (r) {
+    if (!r || !r.blob) { A.aviso('Ese archivo no está en este navegador (restáuralo desde la carpeta).', 'error'); return; }
+    var url = URL.createObjectURL(r.blob), w = window.open(url, '_blank');
+    if (!w) { var a = document.createElement('a'); a.href = url; a.download = r.nombre || 'archivo'; document.body.appendChild(a); a.click(); a.remove(); }
+    setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+  });
+}
+
 function vistaLista(app) {
   app.onclick = function (e) {
+    var adj = e.target.closest('[data-adjunto]');
+    if (adj) { e.preventDefault(); abrirAdjunto(adj.getAttribute('data-adjunto')); return; }
     if (clickFiltros(e)) return;
     if (e.target.closest('a[href^="#/ent-editar/"]')) D.volverA = location.hash || '#/ent';
   };
@@ -186,7 +199,7 @@ function vistaLista(app) {
 function borradorNuevo() {
   var ultimo = D.entrenos.slice().sort(function (a, b) { return (b.creado || 0) - (a.creado || 0); })[0] || {};
   return { id: A.idNuevo(), creado: Date.now(), fecha: hoy(), tipo: 'Entreno', porteros: (ultimo.porteros || CFG.PORTEROS || []).slice(),
-           duracion: ultimo.duracion || 90, intensidad: 'Media', objetivos: [], principal: '', jornada: '', contenido: '', notas: '' };
+           duracion: ultimo.duracion || 90, intensidad: 'Media', objetivos: [], principal: '', jornada: '', contenido: '', notas: '', adjuntos: [] };
 }
 
 function htmlPrincipal(e) {
@@ -197,8 +210,8 @@ function vistaFormulario(app, id) {
   var e;
   if (id) { e = D.entrenos.filter(function (x) { return x.id === id; })[0]; if (!e) { A.navegar('#/ent'); return; } e = JSON.parse(JSON.stringify(e)); }
   else e = borradorNuevo();
-  if (!e.objetivos) e.objetivos = []; if (!e.porteros) e.porteros = [];
-  D.borrador = e;
+  if (!e.objetivos) e.objetivos = []; if (!e.porteros) e.porteros = []; if (!e.adjuntos) e.adjuntos = [];
+  D.borrador = e; D.pendientes = [];
   var volver = id ? (D.volverA || '#/ent') : '#/ent';
 
   app.innerHTML =
@@ -218,6 +231,9 @@ function vistaFormulario(app, id) {
     '<section class="bloque"><h2>3 · Contenido</h2>' +
       '<label class="campo"><span>Ejercicios / tareas</span><textarea name="contenido" rows="3" placeholder="Qué se hizo: tareas, series, situaciones…">' + esc(e.contenido || '') + '</textarea></label>' +
       '<label class="campo"><span>Observaciones de los porteros</span><textarea name="notas" rows="2" placeholder="Cómo lo hicieron, qué corregir la próxima vez…">' + esc(e.notas || '') + '</textarea></label></section>' +
+    '<section class="bloque"><h2>4 · Archivos</h2><p class="nota">La ficha de la sesión en PDF, fotos de la pizarra, un vídeo… Se guardan en este navegador y, si hay carpeta enlazada, también en ella.</p>' +
+      '<div id="zona-adjuntos" class="sin-video">Arrastra aquí los archivos<br><small class="muted">o</small><br><label class="btn archivo" style="margin-top:8px">Elegir archivos<input type="file" id="in-adjuntos" multiple hidden></label></div>' +
+      '<ul class="adjuntos" id="lista-adjuntos"></ul></section>' +
     '<div class="acciones"><button type="submit" class="btn primary grande">Guardar sesión</button>' +
       (id ? '<a class="btn grande" href="' + esc(volver) + '">← Volver</a><button type="button" class="btn peligro" id="btn-borrar">Borrar</button>' : '') + '</div>' +
   '</form>';
@@ -248,6 +264,31 @@ function vistaFormulario(app, id) {
     $('#zona-objetivos', form).innerHTML = A.chips('objetivos', objetivos(), e.objetivos, true);
     $('#zona-principal', form).innerHTML = htmlPrincipal(e);
   }
+  function pintarAdjuntos() {
+    $('#lista-adjuntos', form).innerHTML = e.adjuntos.map(function (a) {
+      return '<li><button type="button" class="adj-nombre" data-adjunto="' + esc(a.id) + '">📎 ' + esc(a.nombre) + '</button><span class="muted">' + A.megas(a.tam || 0) + ' MB</span><button type="button" class="adj-quitar" data-quitar="' + esc(a.id) + '" aria-label="Quitar">✕</button></li>';
+    }).join('') + D.pendientes.map(function (f, i) {
+      return '<li class="pendiente"><span class="adj-nombre">📎 ' + esc(f.name) + '</span><span class="muted">' + A.megas(f.size) + ' MB · nuevo</span><button type="button" class="adj-quitar" data-quitar-pend="' + i + '" aria-label="Quitar">✕</button></li>';
+    }).join('');
+  }
+  function anadirArchivos(lista) {
+    Array.prototype.forEach.call(lista || [], function (f) {
+      if (f.size > MAX_ADJUNTO_MB * 1048576) { A.aviso('«' + f.name + '» pasa de ' + MAX_ADJUNTO_MB + ' MB.', 'error'); return; }
+      D.pendientes.push(f);
+    });
+    pintarAdjuntos();
+  }
+  $('#in-adjuntos', form).addEventListener('change', function (ev) { anadirArchivos(ev.target.files); ev.target.value = ''; });
+  ['dragenter', 'dragover'].forEach(function (ev) { form.addEventListener(ev, function (x) { x.preventDefault(); form.classList.add('arrastrando'); }); });
+  form.addEventListener('dragleave', function (x) { if (!form.contains(x.relatedTarget)) form.classList.remove('arrastrando'); });
+  form.addEventListener('drop', function (x) { x.preventDefault(); form.classList.remove('arrastrando'); anadirArchivos(x.dataTransfer && x.dataTransfer.files); });
+  $('#lista-adjuntos', form).addEventListener('click', function (ev) {
+    var q = ev.target.closest('[data-quitar]'), qp = ev.target.closest('[data-quitar-pend]'), ab = ev.target.closest('[data-adjunto]');
+    if (q) { var id = q.getAttribute('data-quitar'); e.adjuntos = e.adjuntos.filter(function (a) { return a.id !== id; }); (e._borrar = e._borrar || []).push(id); pintarAdjuntos(); }
+    else if (qp) { D.pendientes.splice(parseInt(qp.getAttribute('data-quitar-pend'), 10), 1); pintarAdjuntos(); }
+    else if (ab) abrirAdjunto(ab.getAttribute('data-adjunto'));
+  });
+  pintarAdjuntos();
   $('#btn-objetivo', form).addEventListener('click', anadirObjetivo);
   $('#in-objetivo', form).addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); anadirObjetivo(); } });
   form.addEventListener('submit', function (ev) { ev.preventDefault(); guardar(e); });
@@ -255,6 +296,9 @@ function vistaFormulario(app, id) {
   if (borrar) borrar.addEventListener('click', function () {
     if (!confirm('¿Borrar esta sesión?')) return;
     A.almacen.borrarDe('entrenos', e.id).then(function () {
+      if (window.CARPETA) window.CARPETA.borrarArchivos('adjuntos', (e.adjuntos || []).map(function (a) { return a.id; }));
+      return Promise.all((e.adjuntos || []).map(function (a) { return A.almacen.quitaVideo(a.id); }));
+    }).then(function () {
       D.entrenos = D.entrenos.filter(function (x) { return x.id !== e.id; });
       A.respaldar(null, null); A.aviso('Sesión borrada.'); A.navegar(D.volverA || '#/ent');
     });
@@ -265,10 +309,21 @@ function guardar(e) {
   if (!e.fecha) { A.aviso('Falta la fecha.', 'error'); return; }
   if (!e.objetivos.length) { A.aviso('Marca al menos un objetivo trabajado.', 'error'); return; }
   e.duracion = e.duracion === '' || e.duracion == null ? '' : parseInt(e.duracion, 10);
-  A.almacen.guardarEn('entrenos', e).then(function () {
+  var nuevos = D.pendientes.slice(), borrar = e._borrar || []; delete e._borrar;
+  var guardados = [];
+  if (window.CARPETA && borrar.length) window.CARPETA.borrarArchivos('adjuntos', borrar);
+  Promise.all(borrar.map(function (id) { return A.almacen.quitaVideo(id); })).then(function () {
+    return nuevos.reduce(function (p, f) {
+      return p.then(function () {
+        var id = e.id + '-a' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+        return A.almacen.ponVideo(id, f, f.name).then(function () { e.adjuntos.push({ id: id, nombre: f.name, tipo: f.type || '', tam: f.size }); guardados.push({ id: id, archivo: f }); });
+      });
+    }, Promise.resolve());
+  }).then(function () { return A.almacen.guardarEn('entrenos', e); }).then(function () {
     var i = D.entrenos.findIndex(function (x) { return x.id === e.id; });
     if (i >= 0) D.entrenos[i] = e; else D.entrenos.push(e);
-    A.respaldar(e, null);
+    D.pendientes = [];
+    A.respaldar(e, null, guardados);
     A.aviso('Sesión guardada.', 'ok');
     A.navegar(D.volverA || '#/ent');
   }).catch(function (err) { A.aviso('No se ha podido guardar: ' + (err && err.message || err), 'error'); });
@@ -363,16 +418,16 @@ function vistaPDF(app) {
 function hojasExcel() {
   if (!D.entrenos.length) return [];
   var objs = objetivos();
-  var cab = ['ID', 'FECHA', 'TIPO', 'DURACION (MIN)', 'INTENSIDAD', 'PORTEROS', 'PREVIA JORNADA', 'OBJETIVO PRINCIPAL', 'OBJETIVOS'].concat(objs).concat(['EJERCICIOS', 'OBSERVACIONES', 'ID APP']);
+  var cab = ['ID', 'FECHA', 'TIPO', 'DURACION (MIN)', 'INTENSIDAD', 'PORTEROS', 'PREVIA JORNADA', 'OBJETIVO PRINCIPAL', 'OBJETIVOS'].concat(objs).concat(['EJERCICIOS', 'OBSERVACIONES', 'ARCHIVOS', 'ID APP']);
   var filas = [cab].concat(D.entrenos.slice().sort(function (a, b) { return (a.fecha || '').localeCompare(b.fecha || ''); }).map(function (e, i) {
     return [i + 1, e.fecha || '', e.tipo || '', e.duracion === '' ? '' : (parseInt(e.duracion, 10) || ''), e.intensidad || '', (e.porteros || []).join('; '), e.jornada ? parseInt(e.jornada, 10) || e.jornada : '', e.principal || '', (e.objetivos || []).join('; ')]
-      .concat(objs.map(function (o) { return (e.objetivos || []).indexOf(o) >= 0 ? 1 : ''; })).concat([e.contenido || '', e.notas || '', e.id]);
+      .concat(objs.map(function (o) { return (e.objetivos || []).indexOf(o) >= 0 ? 1 : ''; })).concat([e.contenido || '', e.notas || '', (e.adjuntos || []).map(function (a) { return a.nombre; }).join('; '), e.id]);
   }));
   var cob = cobertura(D.entrenos);
   var res = [[{ v: 'ENTRENOS · COBERTURA DE OBJETIVOS', estilo: 2 }], [], [{ v: 'OBJETIVO', estilo: 1 }, { v: 'SESIONES', estilo: 1 }, { v: '% SESIONES', estilo: 1 }, { v: 'MIN. APROX.', estilo: 1 }, { v: 'ULTIMA VEZ', estilo: 1 }, { v: 'HACE (DIAS)', estilo: 1 }]];
   cob.forEach(function (c) { res.push([c.k, c.n, c.pct, c.minutos, c.ultima, c.hace == null ? '' : c.hace]); });
   var n = cob.length;
-  return [{ nombre: 'ENTRENOS', filas: filas, congelar: 1, filtro: true, anchos: [5, 11, 20, 9, 11, 36, 9, 22, 48].concat(objs.map(function () { return 6; })).concat([50, 50, 14]) },
+  return [{ nombre: 'ENTRENOS', filas: filas, congelar: 1, filtro: true, anchos: [5, 11, 20, 9, 11, 36, 9, 22, 48].concat(objs.map(function () { return 6; })).concat([50, 50, 30, 14]) },
           { nombre: 'ENTRENOS RESUMEN', filas: res, cabecera: false, anchos: [30, 10, 11, 11, 12, 11],
             graficos: n ? [{ tipo: 'barras', titulo: 'Veces trabajado cada objetivo', hoja: 'ENTRENOS RESUMEN', serie: 'Sesiones', cats: 'A4:A' + (3 + n), vals: 'B4:B' + (3 + n), desde: { col: 7, fila: 2 }, hasta: { col: 15, fila: Math.max(14, n + 6) }, nPuntos: n }] : [] }];
 }
