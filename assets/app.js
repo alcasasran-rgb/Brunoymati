@@ -2082,9 +2082,11 @@ function vistaExportar(app) {
 
     '<section class="bloque">' +
       '<h2>Excel</h2>' +
-      '<p>Solo cuando lo pidas. El archivo se genera entero desde los ' + n + ' goles guardados: <strong>LISTA GOLES</strong> ' +
-      '(las columnas de tu plantilla más la valoración del portero, con desplegables), <strong>INFORME</strong> con gráficos (equipo y por portero), ' +
-      '<strong>RESUMEN</strong>, <strong>MAPAS</strong>, <strong>PARTIDOS</strong> y <strong>TABLA MAESTRA</strong>.</p>' +
+      '<p>Solo cuando lo pidas. Un único archivo con todo lo registrado, una o dos hojas por módulo (solo los que tengan datos): ' +
+      '<strong>Goles encajados</strong> (' + n + '): LISTA GOLES con las columnas de tu plantilla y desplegables, INFORME con gráficos, RESUMEN, MAPAS, PARTIDOS y TABLA MAESTRA · ' +
+      '<strong>Penaltis</strong> (' + (window.PEN ? window.PEN.cuenta() : 0) + '): PENALTIS y resumen por lanzador · ' +
+      '<strong>Finalización</strong> (' + (window.FIN && window.FIN.cuenta ? window.FIN.cuenta() : 0) + '): FINALIZACIONES y resumen por jugador · ' +
+      '<strong>Entrenos</strong> (' + (window.ENT ? window.ENT.cuenta() : 0) + '): ENTRENOS y cobertura de objetivos.</p>' +
       (soportaFS
         ? (conHandle
             ? '<p class="nota ok">Archivo enlazado: <strong>' + esc(state.excelHandle.name) + '</strong>. Se actualiza solo cada vez que guardas un gol; también desde el botón de la cabecera.</p>'
