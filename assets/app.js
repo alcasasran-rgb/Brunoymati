@@ -2070,6 +2070,20 @@ function vistaInformePDF(app) {
   $('#btn-imprimir', app).addEventListener('click', function () { window.print(); });
 }
 
+/* Botón «GUARDAR» de Exportar: escribe todo en la carpeta de seguridad; si
+   no hay carpeta, la pide; si el navegador no lo permite, descarga la copia. */
+function guardarTodoAhora() {
+  var C = window.CARPETA, st = C ? C.estado() : 'no-soportado';
+  var total = state.goles.length + (window.PEN ? window.PEN.cuenta() : 0) + (window.FIN && window.FIN.cuenta ? window.FIN.cuenta() : 0) + (window.ENT ? window.ENT.cuenta() : 0);
+  if (st === 'conectada') {
+    return C.guardarTodo('manual').then(function (ok) { if (ok) aviso('Guardado: ' + total + ' registros en la carpeta de seguridad.', 'ok'); });
+  }
+  if (st === 'permiso') return C.reconectar().then(function (ok) { if (ok) aviso('Guardado: ' + total + ' registros en la carpeta de seguridad.', 'ok'); });
+  if (st === 'sin-carpeta') { aviso('Elige primero la carpeta de seguridad.', ''); return C.elegir(); }
+  exportarJSON();
+  aviso('Este navegador no permite carpetas: se ha descargado la copia (.json).', '');
+}
+
 /* ============================== Vista: exportar ============================== */
 
 function vistaExportar(app) {
@@ -2118,8 +2132,12 @@ function vistaExportar(app) {
         '<ul>' + Z.PORTERIA.map(function (z) { return '<li><strong>' + z.n + '</strong> ' + esc(z.nombre) + '</li>'; }).join('') + '</ul></div>' +
       '</details>' +
     '</section>' +
+
+    '<div class="guardar-todo"><button type="button" class="btn primary" id="btn-guardar-todo">GUARDAR</button>' +
+      '<p class="nota">Por si acaso: vuelve a escribir ahora mismo todo lo registrado en la carpeta de seguridad. Si aún no hay carpeta, te pide elegirla.</p></div>' +
   '</div>';
 
+  $('#btn-guardar-todo', app).addEventListener('click', guardarTodoAhora);
   if (window.CARPETA) window.CARPETA.montar(app);
   $('#btn-excel', app).addEventListener('click', function () { exportarExcel(); });
   var enlazar = $('#btn-enlazar', app);
