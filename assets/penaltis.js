@@ -64,7 +64,6 @@ function golDesdePenalti(p, existente) {
   g.observaciones = [p.notas, p.ladoPortero ? 'Portero: ' + p.ladoPortero : ''].filter(Boolean).join(' · ');
   g.videoId = p.videoId || g.videoId || ''; g.videoNombre = p.videoNombre || g.videoNombre || ''; g.videoTam = p.videoTam || 0; g.link = p.link || '';
   g.fotoRemate = p.fotoRemate || ''; g.fotoGol = p.fotoGol || ''; g.instanteRemate = p.instanteRemate; g.instanteGol = p.instanteGol;
-  g.driveVideoId = p.driveVideoId || g.driveVideoId || '';
   return g;
 }
 
@@ -97,7 +96,7 @@ function tarjeta(p) {
         'Balón <strong>' + (zp ? zp.n : '?') + '</strong> ' + (zp ? '<span class="muted">' + esc(zp.corto) + '</span>' : '') +
         (p.ladoPortero ? ' · Portero: ' + esc(p.ladoPortero) + (acierta(p) ? ' ✓' : '') : '') + (p.pie ? ' · ' + esc(p.pie) : '') + '</div>' +
       '<div class="gol-pie">' + (p.fecha ? '<span class="badge">' + esc(A.fechaCorta(p.fecha)) + (p.jornada ? ' · J' + esc(p.jornada) : '') + '</span>' : '') +
-        (p.videoId ? '<span class="badge video">🎬 clip</span>' : '') + (p.driveVideoId ? '<a class="badge link" href="https://drive.google.com/file/d/' + esc(p.driveVideoId) + '/view" target="_blank" rel="noopener">Drive</a>' : '') + '</div></div>' +
+        (p.videoId ? '<span class="badge video">🎬 clip</span>' : '') + '</div></div>' +
     ((p.fotoRemate || p.fotoGol) ? '<div class="gol-fotos">' + (p.fotoRemate ? '<img src="' + p.fotoRemate + '" alt="Lanzamiento">' : '') + (p.fotoGol ? '<img src="' + p.fotoGol + '" alt="Final">' : '') + '</div>' : '') +
     '<a class="gol-editar" href="#/pen-editar/' + encodeURIComponent(p.id) + '" aria-label="Editar">›</a></article>';
 }
@@ -235,7 +234,7 @@ function guardar(p) {
     A.state.videoArchivo = null;
     return sincronizarGol(p);
   }).then(function () {
-    A.respaldarEnDrive(p, archivoClip);
+    A.respaldar(p, archivoClip);
     A.aviso('Penalti guardado.' + (p.resultado === 'Gol' ? ' El gol se ha añadido a Goles encajados.' : ''), 'ok');
     A.navegar(D.volverA || '#/pen');
   }).catch(function (e) { A.aviso('No se ha podido guardar: ' + (e && e.message || e), 'error'); });

@@ -64,10 +64,6 @@ window.CONFIG = {
     'Tenerife': ['Dani Martín', 'David Rodríguez', 'Roko Jureskin', 'José León', 'Jorge Moreno', 'Juanjo Sánchez', 'Martin Pecar', 'Víctor Moreno', 'Jesús de Miguel', 'Ignacio Gil de Pareja Vicent', 'Noel López', 'Anthony Landázuri', 'Gerard Valentín', 'Fabricio Assis de Souza Barbosa', 'Jesús Álvarez', 'Christian Gomis', 'Enric Gallego', 'César Álvarez', 'Mauro Pittón', 'Marc Mateu', 'Grant-Leon Ranos', 'Anes Krdzalic', 'Iván Chapela', 'Baba Diocou', 'Neal Viereck', 'Dani Fernández', 'Gabriel De Vuyst']
   },
 
-  /* Google Drive: ID de cliente OAuth (termina en .apps.googleusercontent.com).
-     Vacío = la opción de Drive aparece desactivada. Cómo crearlo: README. */
-  GOOGLE_CLIENT_ID: '',
-
   /* Nombre del archivo Excel que genera la app. */
   NOMBRE_EXCEL: 'goles-encajados-celta-fortuna.xlsx',
 

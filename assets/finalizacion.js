@@ -426,7 +426,7 @@ function guardarRemate(g, accion) {
     var i = D.remates.findIndex(function (x) { return x.id === g.id; });
     if (i >= 0) D.remates[i] = g; else D.remates.push(g);
     A.state.videoArchivo = null;
-    A.respaldarEnDrive(g, archivoClip);
+    A.respaldar(g, archivoClip);
     A.aviso('Remate guardado.', 'ok');
     if (accion === 'otro') A.navegar('#/fin-nuevo/' + encodeURIComponent(g.equipo) + '/' + encodeURIComponent(g.jugadorId) + '/otro');
     else A.navegar('#/fin-jugador/' + encodeURIComponent(g.jugadorId));

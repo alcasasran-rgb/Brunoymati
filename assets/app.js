@@ -425,8 +425,6 @@ function arrancar() {
   }).then(function () {
     return window.ENT && window.ENT.cargar ? window.ENT.cargar() : null;
   }).then(function () {
-    return window.DRIVE && window.DRIVE.cargar ? window.DRIVE.cargar().catch(function () {}) : null;
-  }).then(function () {
     return window.CARPETA && window.CARPETA.cargar ? window.CARPETA.cargar() : null;
   }).then(function () {
     pintar();
@@ -676,7 +674,6 @@ function tarjetaGol(g) {
         (g.responsabilidad ? '<span class="badge">' + esc(g.responsabilidad) + '</span>' : '') +
         (tieneVideo ? '<span class="badge video">🎬 clip</span>' : '') +
         (tieneLink ? '<a class="badge link" href="' + esc(g.link) + '" target="_blank" rel="noopener">🔗 enlace</a>' : '') +
-        (g.driveVideoId ? '<a class="badge link" href="https://drive.google.com/file/d/' + esc(g.driveVideoId) + '/view" target="_blank" rel="noopener">Drive</a>' : '') +
       '</div>' +
     '</div>' +
     ((g.fotoRemate || g.fotoGol) ? '<div class="gol-fotos">' +
@@ -1149,26 +1146,14 @@ function persistirVideo(obj) {
   return almacen.ponVideo(obj.id, f, f.name).then(function () { obj.videoId = obj.id; });
 }
 
-/* Copia en Google Drive tras guardar: primero el clip (si lo hay), luego
-   datos y Excel. Nunca bloquea el guardado local. */
-function respaldarEnDrive(reg, archivoClip, adjuntos) {
+/* Copia en la carpeta del ordenador tras guardar: primero el clip y los
+   adjuntos (si los hay), luego datos y Excel. Nunca bloquea el guardado. */
+function respaldar(reg, archivoClip, adjuntos) {
   var C = window.CARPETA;
-  if (C && C.estado() === 'conectada') {
-    (reg && archivoClip ? C.guardarClip(reg, archivoClip) : Promise.resolve())
-      .then(function () { return C.guardarAdjuntos(adjuntos || []); })
-      .then(function () { return C.guardarTodo('auto'); });
-  }
-  var D = window.DRIVE;
-  if (!D || D.estado() !== 'conectado') return;
-  (adjuntos || []).forEach(function (a) { D.subirClip({ id: a.id, fecha: reg && reg.fecha, nombre: a.archivo.name }, a.archivo).catch(function () {}); });
-  var sube = reg && archivoClip ? D.subirClip(reg, archivoClip).then(function (id) {
-    if (id) {
-      reg.driveVideoId = id;
-      var st = reg.jugadorId ? 'finalizaciones' : (reg.ladoPortero !== undefined ? 'penaltis' : 'goles');
-      return almacen.guardarEn(st, reg).then(function () { if (state.vista === 'registro' || state.vista === 'pen') pintar(); });
-    }
-  }).catch(function (e) { aviso('No se pudo subir el clip a Drive: ' + e.message, 'error'); }) : Promise.resolve();
-  sube.then(function () { return D.sincronizar('auto'); });
+  if (!C || C.estado() !== 'conectada') return;
+  (reg && archivoClip ? C.guardarClip(reg, archivoClip) : Promise.resolve())
+    .then(function () { return C.guardarAdjuntos(adjuntos || []); })
+    .then(function () { return C.guardarTodo('auto'); });
 }
 
 /* --- Guardar --- */
@@ -1190,7 +1175,7 @@ function guardarGol(g, accion) {
     var i = state.goles.findIndex(function (x) { return x.id === g.id; });
     if (i >= 0) state.goles[i] = g; else state.goles.push(g);
     state.videoArchivo = null;
-    respaldarEnDrive(g, archivoClip);
+    respaldar(g, archivoClip);
     if (state.goles.length % 10 === 0) {
       aviso('Gol guardado. Llevas ' + state.goles.length + ' goles: descarga una copia de seguridad en la pestaña Excel.', '');
     } else aviso('Gol guardado.' + (state.excelHandle ? ' Actualizando Excel…' : ''), 'ok');
@@ -1963,7 +1948,7 @@ function importarJSON(archivo) {
   lector.readAsText(archivo);
 }
 
-/* Mezcla una copia (archivo o Drive) con lo que hay: por id, sin duplicar. */
+/* Mezcla una copia (archivo o carpeta) con lo que hay: por id, sin duplicar. */
 function importarCopia(datos) {
     var lista = datos && datos.goles;
     if (!Array.isArray(lista)) return Promise.reject(new Error('Eso no es una copia válida.'));
@@ -2094,7 +2079,6 @@ function vistaExportar(app) {
   app.innerHTML = '<div class="vista">' +
     '<div class="vista-cab"><h1>Exportar</h1><a class="btn" href="#/informe">← Informe</a></div>' +
     (window.CARPETA ? window.CARPETA.htmlSeccion() : '') +
-    (window.DRIVE ? window.DRIVE.htmlSeccion() : '') +
 
     '<section class="bloque">' +
       '<h2>Excel</h2>' +
@@ -2117,7 +2101,7 @@ function vistaExportar(app) {
 
     '<section class="bloque">' +
       '<h2>Copia de seguridad</h2>' +
-      '<p>Los datos viven en este navegador; con una carpeta o Google Drive enlazados se copian solos. Esta copia manual sirve para llevarlos a otro dispositivo (incluye los fotogramas, no los vídeos).</p>' +
+      '<p>Los datos viven en este navegador; con una carpeta enlazada se copian solos. Esta copia manual sirve para llevarlos a otro dispositivo (incluye los fotogramas, no los vídeos).</p>' +
       '<p class="nota" id="estado-almacen"></p>' +
       '<div class="acciones">' +
         '<button type="button" class="btn" id="btn-json">Descargar copia (.json)</button>' +
@@ -2135,7 +2119,6 @@ function vistaExportar(app) {
   '</div>';
 
   if (window.CARPETA) window.CARPETA.montar(app);
-  if (window.DRIVE) window.DRIVE.montar(app);
   $('#btn-excel', app).addEventListener('click', function () { exportarExcel(); });
   var enlazar = $('#btn-enlazar', app);
   if (enlazar) enlazar.addEventListener('click', elegirArchivoExcel);
@@ -2165,7 +2148,7 @@ window.APP = {
   montarVideo: montarVideo, persistirVideo: persistirVideo, pintarFotos: pintarFotos,
   contar: contar, ordenado: ordenado, pct: pct, barras: barras, kpi: kpi, svgColumnas: svgColumnas, svgDonut: svgDonut,
   norm: norm, rivales: rivales, vueltaDeJornada: vueltaDeJornada, filtrarUltimas: filtrarUltimas, chipsUltimas: chipsUltimas,
-  copiaJSON: copiaJSON, importarCopia: importarCopia, construirExcel: construirExcel, respaldarEnDrive: respaldarEnDrive, respaldar: respaldarEnDrive, recargarTodo: recargarTodo, escudoPropio: escudoPropio,
+  copiaJSON: copiaJSON, importarCopia: importarCopia, construirExcel: construirExcel, respaldar: respaldar, recargarTodo: recargarTodo, escudoPropio: escudoPropio,
   avatarPortero: avatarPortero, iniciales: iniciales, slug: slug, imagenConReserva: imagenConReserva,
   T: T, G: G, SUBTIPO: SUBTIPO, CFG: CFG, Z: Z, COLOR_SERIE: COLOR_SERIE, tarjetaGolHtml: tarjetaGol, claseEvit: claseEvit
 };

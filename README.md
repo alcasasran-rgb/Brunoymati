@@ -91,8 +91,7 @@ Si hay que mover una línea, se toca solo `assets/zonas.js`.
 guarda una copia (`sw.js`). A partir de ahí la app instalada abre sin internet;
 los datos y clips siempre están en el propio ordenador. Al volver a tener
 conexión se actualiza sola a la última versión publicada. Solo necesitan
-internet: la copia en Google Drive y las fotos de jugadores que aún no se
-hayan visto.
+internet las fotos de jugadores que aún no se hayan visto.
 
 ## 5b. Penaltis
 
@@ -148,29 +147,6 @@ de ninguna cuenta.
 - Si la carpeta está dentro de OneDrive, Google Drive o Dropbox, la copia
   queda además en la nube sin configurar nada más.
 
-## 6b. Google Drive (copia automática)
-
-Con Drive conectado, cada vez que se guarda un gol o un remate la app sube a
-la carpeta «Goles encajados» de la cuenta de Google del usuario: la copia
-completa (`copia-goles.json`), el Excel y el clip de vídeo (`clips/`). En otro
-ordenador: Exportar → *Conectar con Google* → *Restaurar desde Drive*.
-
-Hace falta un ID de cliente OAuth, **una sola vez** (5 minutos, cuenta de Google):
-
-1. https://console.cloud.google.com → crear proyecto (p. ej. «Goles encajados»).
-2. *APIs y servicios → Biblioteca* → buscar **Google Drive API** → *Habilitar*.
-3. *APIs y servicios → Pantalla de consentimiento OAuth* → tipo **Externo** →
-   nombre de la app y tu correo → guardar. En *Público* pulsa **Publicar app**
-   (el permiso que usa la app, `drive.file`, no requiere verificación).
-4. *APIs y servicios → Credenciales → Crear credenciales → ID de cliente de
-   OAuth* → tipo **Aplicación web** → en *Orígenes de JavaScript autorizados*
-   añade `https://alcasasran-rgb.github.io` → *Crear*.
-5. Copia el **ID de cliente** (termina en `.apps.googleusercontent.com`) y
-   pégalo en `config.js`, en `GOOGLE_CLIENT_ID`.
-
-La app solo puede ver y tocar los archivos que ella misma crea en Drive
-(permiso `drive.file`); no accede al resto de la cuenta.
-
 ## 7. Vídeos y copias
 
 - El clip se guarda **en el navegador del dispositivo** donde lo metes. No se
@@ -193,7 +169,6 @@ assets/finalizacion.js módulo Finalización de delanteros
 assets/penaltis.js     módulo Penaltis
 assets/entrenos.js     módulo Entrenos (diario de sesiones)
 assets/carpeta.js      copia automática en una carpeta del ordenador
-assets/drive.js    copia automática en Google Drive
 ```
 
 ## 9. Decisiones tomadas
